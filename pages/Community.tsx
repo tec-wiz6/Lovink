@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LocalStorageData, CommunityMessage, ActivePartner } from '../types';
 import { storageService } from '../services/storage';
@@ -21,13 +21,15 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
   const messages = storageService.getCommunityMessages();
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
 
-  // Simple emoji-only checker (fixes regex build error)
-  const isEmojiOnly = (text: string): boolean => {
-    if (!text?.trim()) return true;
-    // Basic common emoji ranges + spaces (no complex Unicode regex)
-    const emojiPattern = /^[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s\t\n\r😀😃😄😁😆😅😂🤣🥰😍🤩😘👀]+$/u;
-    return emojiPattern.test(text);
-  };
+  // Simple emoji-only checker
+  const isEmojiOnly = useCallback((text?: string): boolean => {
+    if (!text) return true;
+    const trimmed = text.trim();
+    if (!trimmed) return true;
+    const emojiPattern =
+      /^[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s\t\n\r]+$/u;
+    return emojiPattern.test(trimmed);
+  }, []);
 
   // auto-scroll to bottom
   useEffect(() => {
@@ -36,7 +38,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
     }
   }, [messages, isTyping]);
 
-  // initial: they start talking even if you say nothing
+  // initial: only 1 partner greets ONCE on desktop, never on mobile
   useEffect(() => {
     if (isMobile) return;
     if (!data.userProfile || partners.length === 0) return;
@@ -75,7 +77,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
     start();
   }, [data.userProfile, partners.length, isMobile]);
 
-  // interval: they gist every X seconds
+  // interval: natural replies only after recent user message
   useEffect(() => {
     if (isMobile) return;
     if (!data.userProfile || partners.length === 0) return;
@@ -86,45 +88,60 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
       const currentMessages = storageService.getCommunityMessages();
       if (currentMessages.length === 0) return;
 
-      // don't auto-talk if the last message is just emojis
       const last = currentMessages[currentMessages.length - 1];
-      if (last && isEmojiOnly(last.text)) {  // FIXED: using helper function
-        return;
-      }
 
-      const partner = partners[Math.floor(Math.random() * partners.length)];
+      // Only react if last message was from user
+      if (!last || last.senderType !== 'user') return;
+
+      // Only if last message is recent (e.g. last 40s)
+      const now = Date.now();
+      if (now - last.timestamp > 40_000) return;
+
+      // Skip emoji-only messages
+      if (isEmojiOnly(last.text)) return;
+
+      // Decide how many partners reply (0–3) for natural feel
+      const chance = Math.random();
+      let maxReplies = 0;
+      if (chance < 0.45) maxReplies = 1;       // 45% -> 1 reply
+      else if (chance < 0.8) maxReplies = 2;   // 35% -> 2 replies
+      else maxReplies = 3;                     // 20% -> 3 replies
+
+      if (maxReplies === 0) return;
+
+      const shuffled = [...partners].sort(() => Math.random() - 0.5);
+      const responders = shuffled.slice(0, Math.min(maxReplies, partners.length));
 
       setIsTyping(true);
 
-      const response = await aiService.communityChat({
-        userProfile: data.userProfile!,
-        partners,
-        speakingPartner: partner,
-        messages: currentMessages,
-      });
+      for (const partner of responders) {
+        const response = await aiService.communityChat({
+          userProfile: data.userProfile!,
+          partners,
+          speakingPartner: partner,
+          messages: currentMessages,
+        });
 
-      const clean = (response.reply || '').replace(/👀/g, '').trim();
-      // ignore empty or pure-emoji replies
-      if (!clean || isEmojiOnly(clean)) {  // FIXED: using helper function
-        setIsTyping(false);
-        return;
+        const clean = (response.reply || '').replace(/👀/g, '').trim();
+        if (!clean || isEmojiOnly(clean)) continue;
+
+        const aiMsg: CommunityMessage = {
+          id: (Date.now() + Math.random()).toString(),
+          senderType: 'partner',
+          senderId: partner.id,
+          text: clean,
+          timestamp: Date.now(),
+        };
+
+        storageService.addCommunityMessage(aiMsg);
+        onUpdate();
       }
 
-      const aiMsg: CommunityMessage = {
-        id: Date.now().toString(),
-        senderType: 'partner',
-        senderId: partner.id,
-        text: clean,
-        timestamp: Date.now(),
-      };
-
-      storageService.addCommunityMessage(aiMsg);
       setIsTyping(false);
-      onUpdate();
-    }, 30000); // every 30s – calmer
+    }, 5000); // check every 5s
 
     return () => clearInterval(interval);
-  }, [data.userProfile, partners.length, isTyping, isMobile, isEmojiOnly]);  // Added dependency
+  }, [data.userProfile, partners.length, isTyping, isMobile, isEmojiOnly]);
 
   const handleSend = async () => {
     const textToSend = input.trim();
@@ -149,70 +166,61 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
       lower.includes('all of you') ||
       lower.includes('everyone');
 
-    setIsTyping(true);
-
-    if (broadcast) {
-      // pick up to 3 random distinct partners
-      const shuffled = [...partners].sort(() => Math.random() - 0.5);
-      const responders = shuffled.slice(0, Math.min(3, partners.length));
-
-      for (const partner of responders) {
-        const response = await aiService.communityChat({
-          userProfile: data.userProfile!,
-          partners,
-          speakingPartner: partner,
-          messages: [...messages, userMsg],
-        });
-
-        const clean = (response.reply || '').replace(/👀/g, '').trim();
-        if (!clean) continue;
-
-        const aiMsg: CommunityMessage = {
-          id: (Date.now() + Math.random()).toString(),
-          senderType: 'partner',
-          senderId: partner.id,
-          text: clean,
-          timestamp: Date.now(),
-        };
-        storageService.addCommunityMessage(aiMsg);
-        onUpdate();
-      }
-
-      setIsTyping(false);
-      return;
-    }
-
-    // normal single-partner reply (by name or random)
-    let partner: ActivePartner | undefined = partners.find(p =>
+    // Base responders list
+    let primary: ActivePartner | undefined = partners.find(p =>
       lower.includes(p.name.toLowerCase()),
     );
-    if (!partner) {
-      partner = partners[Math.floor(Math.random() * partners.length)];
+    if (!primary) {
+      primary = partners[Math.floor(Math.random() * partners.length)];
     }
 
-    const response = await aiService.communityChat({
-      userProfile: data.userProfile!,
-      partners,
-      speakingPartner: partner!,
-      messages: [...messages, userMsg],
-    });
+    let responders: ActivePartner[] = [];
 
-    const clean = (response.reply || '').replace(/👀/g, '').trim();
-    if (!clean) {
-      setIsTyping(false);
-      return;
+    if (broadcast) {
+      // 2–4 responders for explicit broadcast
+      const shuffled = [...partners].sort(() => Math.random() - 0.5);
+      const max = Math.min(4, partners.length);
+      const min = Math.min(2, partners.length);
+      const total = Math.max(min, Math.floor(Math.random() * max) + 1);
+      responders = shuffled.slice(0, total);
+    } else {
+      // Normal: 1–2 responders max
+      responders = [primary!];
+      const chance = Math.random();
+      if (chance < 0.3 && partners.length > 1) {
+        const extra = partners
+          .filter(p => p.id !== primary!.id)
+          .sort(() => Math.random() - 0.5)
+          .slice(0, 1);
+        responders.push(...extra);
+      }
     }
 
-    const aiMsg: CommunityMessage = {
-      id: (Date.now() + 1).toString(),
-      senderType: 'partner',
-      senderId: partner!.id,
-      text: clean,
-      timestamp: Date.now(),
-    };
-    storageService.addCommunityMessage(aiMsg);
+    setIsTyping(true);
+
+    for (const p of responders) {
+      const response = await aiService.communityChat({
+        userProfile: data.userProfile!,
+        partners,
+        speakingPartner: p,
+        messages: [...messages, userMsg],
+      });
+
+      const clean = (response.reply || '').replace(/👀/g, '').trim();
+      if (!clean || isEmojiOnly(clean)) continue;
+
+      const aiMsg: CommunityMessage = {
+        id: (Date.now() + Math.random()).toString(),
+        senderType: 'partner',
+        senderId: p.id,
+        text: clean,
+        timestamp: Date.now(),
+      };
+      storageService.addCommunityMessage(aiMsg);
+      onUpdate();
+    }
+
     setIsTyping(false);
-    onUpdate();
   };
 
   return (
