@@ -31,6 +31,14 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
     return emojiPattern.test(trimmed);
   }, []);
 
+  // Duplicate text checker (avoid “I think so” twice)
+  const isDuplicate = useCallback((text: string): boolean => {
+    if (!text.trim()) return true;
+    const t = text.trim().toLowerCase();
+    const recent = storageService.getCommunityMessages().slice(-10);
+    return recent.some(m => (m.text || '').trim().toLowerCase() === t);
+  }, []);
+
   // auto-scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
@@ -60,7 +68,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
       });
 
       let clean = (response.reply || '').replace(/👀/g, '').trim();
-      if (!clean) {
+      if (!clean || isEmojiOnly(clean) || isDuplicate(clean)) {
         setIsTyping(false);
         return;
       }
@@ -83,7 +91,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
     };
 
     start();
-  }, [data.userProfile, partners.length, isMobile]);
+  }, [data.userProfile, partners.length, isMobile, isEmojiOnly, isDuplicate]);
 
   // interval: natural replies between partners + to user
   useEffect(() => {
@@ -156,7 +164,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
         });
 
         let clean = (response.reply || '').replace(/👀/g, '').trim();
-        if (!clean || isEmojiOnly(clean)) continue;
+        if (!clean || isEmojiOnly(clean) || isDuplicate(clean)) continue;
 
         // keep replies short & natural
         if (clean.length > 160) {
@@ -179,7 +187,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
     }, 6000); // every 6s: check if someone should respond
 
     return () => clearInterval(interval);
-  }, [data.userProfile, partners.length, isTyping, isMobile, isEmojiOnly]);
+  }, [data.userProfile, partners.length, isTyping, isMobile, isEmojiOnly, isDuplicate]);
 
   const handleSend = async () => {
     const textToSend = input.trim();
@@ -244,7 +252,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
       });
 
       let clean = (response.reply || '').replace(/👀/g, '').trim();
-      if (!clean || isEmojiOnly(clean)) continue;
+      if (!clean || isEmojiOnly(clean) || isDuplicate(clean)) continue;
 
       // keep replies short & natural
       if (clean.length > 160) {
