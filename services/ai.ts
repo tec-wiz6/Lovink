@@ -33,6 +33,37 @@ export const aiService = {
     // temporary dummy; you can wire a vision route later
     return {
       suggestedName: "Mystery Partner",
+
+  import { UserProfile, ActivePartner, Message, Memory, CommunityMessage } from '../types';
+
+export const aiService = {
+  // existing chat ...
+
+  communityChat: async (params: {
+    userProfile: UserProfile;
+    partners: ActivePartner[];
+    speakingPartner: ActivePartner;
+    messages: CommunityMessage[];
+  }): Promise<{ reply: string }> => {
+    const { userProfile, partners, speakingPartner, messages } = params;
+
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mode: "community",
+        userProfile,
+        partners,
+        speakingPartner,
+        messages
+      }),
+    });
+
+    const data = await res.json();
+    return { reply: data.reply || "..." };
+  }
+};
+
       traits: ["Deep", "Caring", "Playful"],
       bio: "Waiting to get to know you better.",
     };
