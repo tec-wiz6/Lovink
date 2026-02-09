@@ -273,7 +273,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
       >
         <div className="flex items-center gap-2 rounded-[28px] px-5 py-3 border">
 <input
-  className={`flex-1 bg-transparent py-1 text-base md:text-sm focus:outline-none font-bold ${
+  className={`chat-input flex-1 bg-transparent py-1 text-sm focus:outline-none font-bold ${
     isDark ? 'text-white' : 'text-black'
   }`}
   placeholder="Say something to the room..."
@@ -282,7 +282,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
   onKeyDown={e => {
     if (e.key === 'Enter') {
       if (window.innerWidth <= 768) {
-        e.preventDefault();      // mobile: don't send, no weird pop
+        e.preventDefault();      // mobile: don't send on Enter
       } else {
         e.preventDefault();
         handleSend();            // desktop: Enter sends
@@ -290,6 +290,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
     }
   }}
 />
+
 
           {input.trim() && (
             <button onClick={handleSend} className="text-pink-500">
@@ -303,4 +304,5 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
 };
 
 export default Community;
+
 
