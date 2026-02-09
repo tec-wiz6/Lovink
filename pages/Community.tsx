@@ -43,11 +43,18 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
         speakingPartner: partner,
         messages: [],
       });
+
+      const clean = (response.reply || "").replace(/👀/g, "").trim();
+      if (!clean) {
+        setIsTyping(false);
+        return;
+      }
+
       const aiMsg: CommunityMessage = {
         id: Date.now().toString(),
         senderType: 'partner',
         senderId: partner.id,
-        text: response.reply,
+        text: clean,
         timestamp: Date.now(),
       };
       storageService.addCommunityMessage(aiMsg);
@@ -59,58 +66,54 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
   }, [data.userProfile, partners.length]);
 
   // interval: they gist every X seconds
- useEffect(() => {
-  if (!data.userProfile || partners.length === 0) return;
+  useEffect(() => {
+    if (!data.userProfile || partners.length === 0) return;
 
-  const interval = setInterval(async () => {
-    if (isTyping) return;
+    const interval = setInterval(async () => {
+      if (isTyping) return;
 
-    const currentMessages = storageService.getCommunityMessages();
-    if (currentMessages.length === 0) return;
+      const currentMessages = storageService.getCommunityMessages();
+      if (currentMessages.length === 0) return;
 
-    // don't auto-talk if the last few messages are just emojis
-    const last = currentMessages[currentMessages.length - 1];
-    if (last && /^[\p{Emoji}\s]+$/u.test(last.text || "")) {
-      return;
-    }
+      // don't auto-talk if the last message is just emojis
+      const last = currentMessages[currentMessages.length - 1];
+      if (last && /^[\p{Emoji}\s]+$/u.test(last.text || "")) {
+        return;
+      }
 
-    const partner = partners[Math.floor(Math.random() * partners.length)];
+      const partner = partners[Math.floor(Math.random() * partners.length)];
 
-    setIsTyping(true);
+      setIsTyping(true);
 
-    const response = await aiService.communityChat({
-      userProfile: data.userProfile!,
-      partners,
-      speakingPartner: partner,
-      messages: currentMessages,
-    });
+      const response = await aiService.communityChat({
+        userProfile: data.userProfile!,
+        partners,
+        speakingPartner: partner,
+        messages: currentMessages,
+      });
 
-const clean = (response.reply || "").replace(/👀/g, "").trim();
-if (!clean) {
-  setIsTyping(false);
-  return;
-}
-...
-text: clean,
-}
+      const clean = (response.reply || "").replace(/👀/g, "").trim();
+      // ignore empty or pure-emoji replies
+      if (!clean || /^[\p{Emoji}\s]+$/u.test(clean)) {
+        setIsTyping(false);
+        return;
+      }
 
-    const aiMsg: CommunityMessage = {
-      id: Date.now().toString(),
-      senderType: 'partner',
-      senderId: partner.id,
-      text,
-      timestamp: Date.now(),
-    };
+      const aiMsg: CommunityMessage = {
+        id: Date.now().toString(),
+        senderType: 'partner',
+        senderId: partner.id,
+        text: clean,
+        timestamp: Date.now(),
+      };
 
-    storageService.addCommunityMessage(aiMsg);
-    setIsTyping(false);
-    onUpdate();
-  }, 30000); // every 30s – calmer
+      storageService.addCommunityMessage(aiMsg);
+      setIsTyping(false);
+      onUpdate();
+    }, 30000); // every 30s – calmer
 
-  return () => clearInterval(interval);
-}, [data.userProfile, partners.length, isTyping]);
-
-
+    return () => clearInterval(interval);
+  }, [data.userProfile, partners.length, isTyping]);
 
   const handleSend = async () => {
     const textToSend = input.trim();
@@ -150,11 +153,14 @@ text: clean,
           messages: [...messages, userMsg],
         });
 
+        const clean = (response.reply || "").replace(/👀/g, "").trim();
+        if (!clean) continue;
+
         const aiMsg: CommunityMessage = {
           id: (Date.now() + Math.random()).toString(),
           senderType: 'partner',
           senderId: partner.id,
-          text: response.reply,
+          text: clean,
           timestamp: Date.now(),
         };
         storageService.addCommunityMessage(aiMsg);
@@ -180,11 +186,17 @@ text: clean,
       messages: [...messages, userMsg]
     });
 
+    const clean = (response.reply || "").replace(/👀/g, "").trim();
+    if (!clean) {
+      setIsTyping(false);
+      return;
+    }
+
     const aiMsg: CommunityMessage = {
       id: (Date.now() + 1).toString(),
       senderType: 'partner',
       senderId: partner!.id,
-      text: response.reply,
+      text: clean,
       timestamp: Date.now()
     };
     storageService.addCommunityMessage(aiMsg);
@@ -254,5 +266,3 @@ text: clean,
 };
 
 export default Community;
-
-
