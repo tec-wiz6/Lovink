@@ -19,6 +19,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
 
   const partners: ActivePartner[] = Object.values(data.activePartners || {});
   const messages = storageService.getCommunityMessages();
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
 
   // auto-scroll to bottom
   useEffect(() => {
@@ -29,6 +30,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
 
   // initial: they start talking even if you say nothing
   useEffect(() => {
+    if (isMobile) return;
     if (!data.userProfile || partners.length === 0) return;
 
     const existing = storageService.getCommunityMessages();
@@ -44,7 +46,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
         messages: [],
       });
 
-      const clean = (response.reply || "").replace(/👀/g, "").trim();
+      const clean = (response.reply || '').replace(/👀/g, '').trim();
       if (!clean) {
         setIsTyping(false);
         return;
@@ -63,10 +65,11 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
     };
 
     start();
-  }, [data.userProfile, partners.length]);
+  }, [data.userProfile, partners.length, isMobile]);
 
   // interval: they gist every X seconds
   useEffect(() => {
+    if (isMobile) return;
     if (!data.userProfile || partners.length === 0) return;
 
     const interval = setInterval(async () => {
@@ -77,7 +80,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
 
       // don't auto-talk if the last message is just emojis
       const last = currentMessages[currentMessages.length - 1];
-      if (last && /^[\p{Emoji}\s]+$/u.test(last.text || "")) {
+      if (last && /^[\p{Emoji}\s]+$/u.test(last.text || '')) {
         return;
       }
 
@@ -92,7 +95,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
         messages: currentMessages,
       });
 
-      const clean = (response.reply || "").replace(/👀/g, "").trim();
+      const clean = (response.reply || '').replace(/👀/g, '').trim();
       // ignore empty or pure-emoji replies
       if (!clean || /^[\p{Emoji}\s]+$/u.test(clean)) {
         setIsTyping(false);
@@ -113,7 +116,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
     }, 30000); // every 30s – calmer
 
     return () => clearInterval(interval);
-  }, [data.userProfile, partners.length, isTyping]);
+  }, [data.userProfile, partners.length, isTyping, isMobile]);
 
   const handleSend = async () => {
     const textToSend = input.trim();
@@ -124,7 +127,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
       senderType: 'user',
       senderId: 'user',
       text: textToSend,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
     storageService.addCommunityMessage(userMsg);
     setInput('');
@@ -134,9 +137,9 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
 
     // check if it's a question to everyone
     const broadcast =
-      lower.includes("you all") ||
-      lower.includes("all of you") ||
-      lower.includes("everyone");
+      lower.includes('you all') ||
+      lower.includes('all of you') ||
+      lower.includes('everyone');
 
     setIsTyping(true);
 
@@ -153,7 +156,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
           messages: [...messages, userMsg],
         });
 
-        const clean = (response.reply || "").replace(/👀/g, "").trim();
+        const clean = (response.reply || '').replace(/👀/g, '').trim();
         if (!clean) continue;
 
         const aiMsg: CommunityMessage = {
@@ -173,7 +176,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
 
     // normal single-partner reply (by name or random)
     let partner: ActivePartner | undefined = partners.find(p =>
-      lower.includes(p.name.toLowerCase())
+      lower.includes(p.name.toLowerCase()),
     );
     if (!partner) {
       partner = partners[Math.floor(Math.random() * partners.length)];
@@ -183,10 +186,10 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
       userProfile: data.userProfile!,
       partners,
       speakingPartner: partner!,
-      messages: [...messages, userMsg]
+      messages: [...messages, userMsg],
     });
 
-    const clean = (response.reply || "").replace(/👀/g, "").trim();
+    const clean = (response.reply || '').replace(/👀/g, '').trim();
     if (!clean) {
       setIsTyping(false);
       return;
@@ -197,7 +200,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
       senderType: 'partner',
       senderId: partner!.id,
       text: clean,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
     storageService.addCommunityMessage(aiMsg);
     setIsTyping(false);
@@ -205,9 +208,17 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
   };
 
   return (
-    <div className={`flex-1 flex flex-col h-full overflow-hidden ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
+    <div
+      className={`flex-1 flex flex-col h-full overflow-hidden ${
+        isDark ? 'bg-slate-950' : 'bg-slate-50'
+      }`}
+    >
       {/* Header */}
-      <div className={`p-4 border-b flex items-center gap-3 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-pink-50'}`}>
+      <div
+        className={`p-4 border-b flex items-center gap-3 ${
+          isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-pink-50'
+        }`}
+      >
         <button onClick={() => navigate(-1)} className="p-2 rounded-full">
           <ArrowLeft size={24} />
         </button>
@@ -221,12 +232,18 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
           const isUser = m.senderType === 'user';
           return (
             <div key={m.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[80%] p-3 rounded-2xl text-sm shadow
-                ${isUser ? 'bg-pink-600 text-white' : (isDark ? 'bg-slate-800 text-slate-100' : 'bg-white text-slate-800')}`}>
+              <div
+                className={`max-w-[80%] p-3 rounded-2xl text-sm shadow
+                ${
+                  isUser
+                    ? 'bg-pink-600 text-white'
+                    : isDark
+                    ? 'bg-slate-800 text-slate-100'
+                    : 'bg-white text-slate-800'
+                }`}
+              >
                 {!isUser && partner && (
-                  <div className="text-[10px] font-bold mb-1 opacity-70">
-                    {partner.name}
-                  </div>
+                  <div className="text-[10px] font-bold mb-1 opacity-70">{partner.name}</div>
                 )}
                 {m.text}
               </div>
@@ -235,7 +252,11 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
         })}
         {isTyping && (
           <div className="flex justify-start">
-            <div className={`px-4 py-3 rounded-2xl flex gap-1.5 shadow-md border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-pink-50'}`}>
+            <div
+              className={`px-4 py-3 rounded-2xl flex gap-1.5 shadow-md border ${
+                isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-pink-50'
+              }`}
+            >
               <div className="w-1.5 h-1.5 bg-pink-500 rounded-full" />
               <div className="w-1.5 h-1.5 bg-pink-500 rounded-full" />
               <div className="w-1.5 h-1.5 bg-pink-500 rounded-full" />
@@ -245,14 +266,29 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
       </div>
 
       {/* Input */}
-      <div className={`p-4 border-t ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-100'}`}>
+      <div
+        className={`p-4 border-t ${
+          isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-100'
+        }`}
+      >
         <div className="flex items-center gap-2 rounded-[28px] px-5 py-3 border">
           <input
-            className={`flex-1 bg-transparent py-1 text-sm focus:outline-none font-bold ${isDark ? 'text-white' : 'text-black'}`}
+            className={`flex-1 bg-transparent py-1 text-sm focus:outline-none font-bold ${
+              isDark ? 'text-white' : 'text-black'
+            }`}
             placeholder="Say something to the room..."
             value={input}
             onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSend()}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                if (window.innerWidth <= 768) {
+                  e.preventDefault(); // mobile: ignore
+                } else {
+                  e.preventDefault();
+                  handleSend(); // desktop: send
+                }
+              }
+            }}
           />
           {input.trim() && (
             <button onClick={handleSend} className="text-pink-500">
