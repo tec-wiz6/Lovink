@@ -38,13 +38,16 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
     }
   }, [messages, isTyping]);
 
-  // initial: only 1 partner greets ONCE on desktop, never on mobile
+  // initial: very lightweight greeting ONCE on desktop, sometimes no greeting
   useEffect(() => {
     if (isMobile) return;
     if (!data.userProfile || partners.length === 0) return;
 
     const existing = storageService.getCommunityMessages();
     if (existing.length > 0) return;
+
+    // 50% chance they greet first, 50% they wait for you
+    if (Math.random() < 0.5) return;
 
     const start = async () => {
       const partner = partners[Math.floor(Math.random() * partners.length)];
@@ -56,10 +59,15 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
         messages: [],
       });
 
-      const clean = (response.reply || '').replace(/👀/g, '').trim();
+      let clean = (response.reply || '').replace(/👀/g, '').trim();
       if (!clean) {
         setIsTyping(false);
         return;
+      }
+
+      // keep initial greeting short
+      if (clean.length > 140) {
+        clean = clean.slice(0, 140) + '…';
       }
 
       const aiMsg: CommunityMessage = {
@@ -77,100 +85,101 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
     start();
   }, [data.userProfile, partners.length, isMobile]);
 
-// interval: natural replies between partners + to user
-useEffect(() => {
-  if (isMobile) return;
-  if (!data.userProfile || partners.length === 0) return;
+  // interval: natural replies between partners + to user
+  useEffect(() => {
+    if (isMobile) return;
+    if (!data.userProfile || partners.length === 0) return;
 
-  const interval = setInterval(async () => {
-    if (isTyping) return;
+    const interval = setInterval(async () => {
+      if (isTyping) return;
 
-    const currentMessages = storageService.getCommunityMessages();
-    if (currentMessages.length === 0) return;
+      const currentMessages = storageService.getCommunityMessages();
+      if (currentMessages.length === 0) return;
 
-    const last = currentMessages[currentMessages.length - 1];
-    if (!last) return;
+      const last = currentMessages[currentMessages.length - 1];
+      if (!last) return;
 
-    const now = Date.now();
-    // Ignore very old stuff
-    if (now - last.timestamp > 40_000) return;
+      const now = Date.now();
+      // Ignore old stuff (> 45s)
+      if (now - last.timestamp > 45_000) return;
 
-    // If last is emoji-only, ignore
-    if (isEmojiOnly(last.text)) return;
+      if (isEmojiOnly(last.text)) return;
 
-    // Decide what type of turn this is
-    const lastFromUser = last.senderType === 'user';
-    const lastFromPartner = last.senderType === 'partner';
+      const lastFromUser = last.senderType === 'user';
+      const lastFromPartner = last.senderType === 'partner';
 
-    // Small chance to do anything at all (to keep it chill)
-    if (Math.random() < 0.4) return; // 60% of the time: silence
+      // Most of the time, stay silent so it feels chill
+      if (Math.random() < 0.45) return;
 
-    let responders: ActivePartner[] = [];
+      let responders: ActivePartner[] = [];
 
-    if (lastFromUser) {
-      // User spoke last -> 1–3 partners reply (like before)
-      const chance = Math.random();
-      let maxReplies = 1;
-      if (chance < 0.45) maxReplies = 1;
-      else if (chance < 0.8) maxReplies = 2;
-      else maxReplies = 3;
+      if (lastFromUser) {
+        // User spoke last -> 1–3 partners reply
+        const chance = Math.random();
+        let maxReplies = 1;
+        if (chance < 0.5) maxReplies = 1;
+        else if (chance < 0.85) maxReplies = 2;
+        else maxReplies = 3;
 
-      const shuffled = [...partners].sort(() => Math.random() - 0.5);
-      responders = shuffled.slice(0, Math.min(maxReplies, partners.length));
-    } else if (lastFromPartner) {
-      // Partner spoke last -> 0–2 other partners reply to THEM
-      const speakingPartner = partners.find(p => p.id === last.senderId);
-      if (!speakingPartner) return;
+        const shuffled = [...partners].sort(() => Math.random() - 0.5);
+        responders = shuffled.slice(0, Math.min(maxReplies, partners.length));
+      } else if (lastFromPartner) {
+        // Partner spoke last -> 0–2 other partners reply to them
+        const speakingPartner = partners.find(p => p.id === last.senderId);
+        if (!speakingPartner) return;
 
-      const others = partners.filter(p => p.id !== speakingPartner.id);
-      if (others.length === 0) return;
+        const others = partners.filter(p => p.id !== speakingPartner.id);
+        if (others.length === 0) return;
 
-      const chance = Math.random();
-      let maxReplies = 0;
-      if (chance < 0.5) maxReplies = 1;      // 50% -> 1 reply
-      else if (chance < 0.75) maxReplies = 2; // 25% -> 2 replies
-      else maxReplies = 0;                    // 25% -> nobody replies
+        const chance = Math.random();
+        let maxReplies = 0;
+        if (chance < 0.5) maxReplies = 1;
+        else if (chance < 0.75) maxReplies = 2;
+        else maxReplies = 0;
 
-      if (maxReplies === 0) return;
+        if (maxReplies === 0) return;
 
-      const shuffled = [...others].sort(() => Math.random() - 0.5);
-      responders = shuffled.slice(0, Math.min(maxReplies, others.length));
-    } else {
-      return;
-    }
+        const shuffled = [...others].sort(() => Math.random() - 0.5);
+        responders = shuffled.slice(0, Math.min(maxReplies, others.length));
+      } else {
+        return;
+      }
 
-    setIsTyping(true);
+      setIsTyping(true);
 
-    for (const partner of responders) {
-      const response = await aiService.communityChat({
-        userProfile: data.userProfile!,
-        partners,
-        speakingPartner: partner,
-        // IMPORTANT: give the whole history so they “see” other partners too
-        messages: currentMessages,
-      });
+      for (const partner of responders) {
+        const response = await aiService.communityChat({
+          userProfile: data.userProfile!,
+          partners,
+          speakingPartner: partner,
+          messages: currentMessages,
+        });
 
-      const clean = (response.reply || '').replace(/👀/g, '').trim();
-      if (!clean || isEmojiOnly(clean)) continue;
+        let clean = (response.reply || '').replace(/👀/g, '').trim();
+        if (!clean || isEmojiOnly(clean)) continue;
 
-      const aiMsg: CommunityMessage = {
-        id: (Date.now() + Math.random()).toString(),
-        senderType: 'partner',
-        senderId: partner.id,
-        text: clean,
-        timestamp: Date.now(),
-      };
+        // keep replies short & natural
+        if (clean.length > 160) {
+          clean = clean.slice(0, 160) + '…';
+        }
 
-      storageService.addCommunityMessage(aiMsg);
-      onUpdate();
-    }
+        const aiMsg: CommunityMessage = {
+          id: (Date.now() + Math.random()).toString(),
+          senderType: 'partner',
+          senderId: partner.id,
+          text: clean,
+          timestamp: Date.now(),
+        };
 
-    setIsTyping(false);
-  }, 5000); // check every 5s
+        storageService.addCommunityMessage(aiMsg);
+        onUpdate();
+      }
 
-  return () => clearInterval(interval);
-}, [data.userProfile, partners.length, isTyping, isMobile, isEmojiOnly]);
+      setIsTyping(false);
+    }, 6000); // every 6s: check if someone should respond
 
+    return () => clearInterval(interval);
+  }, [data.userProfile, partners.length, isTyping, isMobile, isEmojiOnly]);
 
   const handleSend = async () => {
     const textToSend = input.trim();
@@ -189,13 +198,12 @@ useEffect(() => {
 
     const lower = textToSend.toLowerCase();
 
-    // check if it's a question to everyone
     const broadcast =
       lower.includes('you all') ||
       lower.includes('all of you') ||
       lower.includes('everyone');
 
-    // Base responders list
+    // choose main responder
     let primary: ActivePartner | undefined = partners.find(p =>
       lower.includes(p.name.toLowerCase()),
     );
@@ -206,14 +214,14 @@ useEffect(() => {
     let responders: ActivePartner[] = [];
 
     if (broadcast) {
-      // 2–4 responders for explicit broadcast
+      // 2–4 responders when you talk to everyone
       const shuffled = [...partners].sort(() => Math.random() - 0.5);
       const max = Math.min(4, partners.length);
       const min = Math.min(2, partners.length);
       const total = Math.max(min, Math.floor(Math.random() * max) + 1);
       responders = shuffled.slice(0, total);
     } else {
-      // Normal: 1–2 responders max
+      // normal message: 1–2 responders
       responders = [primary!];
       const chance = Math.random();
       if (chance < 0.3 && partners.length > 1) {
@@ -235,8 +243,13 @@ useEffect(() => {
         messages: [...messages, userMsg],
       });
 
-      const clean = (response.reply || '').replace(/👀/g, '').trim();
+      let clean = (response.reply || '').replace(/👀/g, '').trim();
       if (!clean || isEmojiOnly(clean)) continue;
+
+      // keep replies short & natural
+      if (clean.length > 160) {
+        clean = clean.slice(0, 160) + '…';
+      }
 
       const aiMsg: CommunityMessage = {
         id: (Date.now() + Math.random()).toString(),
@@ -346,4 +359,3 @@ useEffect(() => {
 };
 
 export default Community;
-
