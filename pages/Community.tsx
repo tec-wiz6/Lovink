@@ -59,41 +59,56 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
   }, [data.userProfile, partners.length]);
 
   // interval: they gist every X seconds
-  useEffect(() => {
-    if (!data.userProfile || partners.length === 0) return;
+ useEffect(() => {
+  if (!data.userProfile || partners.length === 0) return;
 
-    const interval = setInterval(async () => {
-      if (isTyping) return;
+  const interval = setInterval(async () => {
+    if (isTyping) return;
 
-      const currentMessages = storageService.getCommunityMessages();
-      if (currentMessages.length === 0) return;
+    const currentMessages = storageService.getCommunityMessages();
+    if (currentMessages.length === 0) return;
 
-      const partner = partners[Math.floor(Math.random() * partners.length)];
+    // don't auto-talk if the last few messages are just emojis
+    const last = currentMessages[currentMessages.length - 1];
+    if (last && /^[\p{Emoji}\s]+$/u.test(last.text || "")) {
+      return;
+    }
 
-      setIsTyping(true);
+    const partner = partners[Math.floor(Math.random() * partners.length)];
 
-      const response = await aiService.communityChat({
-        userProfile: data.userProfile!,
-        partners,
-        speakingPartner: partner,
-        messages: currentMessages,
-      });
+    setIsTyping(true);
 
-      const aiMsg: CommunityMessage = {
-        id: Date.now().toString(),
-        senderType: 'partner',
-        senderId: partner.id,
-        text: response.reply,
-        timestamp: Date.now(),
-      };
+    const response = await aiService.communityChat({
+      userProfile: data.userProfile!,
+      partners,
+      speakingPartner: partner,
+      messages: currentMessages,
+    });
 
-      storageService.addCommunityMessage(aiMsg);
+    const text = (response.reply || "").trim();
+    // ignore empty or pure-emoji replies
+    if (!text || /^[\p{Emoji}\s]+$/u.test(text)) {
       setIsTyping(false);
-      onUpdate();
-    }, 20000); // every 20s – adjust if you want
+      return;
+    }
 
-    return () => clearInterval(interval);
-  }, [data.userProfile, partners.length, isTyping]);
+    const aiMsg: CommunityMessage = {
+      id: Date.now().toString(),
+      senderType: 'partner',
+      senderId: partner.id,
+      text,
+      timestamp: Date.now(),
+    };
+
+    storageService.addCommunityMessage(aiMsg);
+    setIsTyping(false);
+    onUpdate();
+  }, 30000); // every 30s – calmer
+
+  return () => clearInterval(interval);
+}, [data.userProfile, partners.length, isTyping]);
+
+
 
   const handleSend = async () => {
     const textToSend = input.trim();
@@ -237,3 +252,4 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
 };
 
 export default Community;
+
