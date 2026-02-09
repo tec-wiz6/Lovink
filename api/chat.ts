@@ -27,19 +27,18 @@ Reply only as ${speakingPartner.name}, 1–3 short WhatsApp-style messages.
 Use emojis naturally, tease a bit, but keep it romantic and non-explicit.
 `;
 
-      const chatMessages = [
-        { role: "system", content: systemPrompt },
-        ...(messages || []).slice(-20).map((m: any) => {
-          if (m.senderType === "user") {
-            return { role: "user", content: m.text };
-          }
-          const partner = partners.find((p: any) => p.id === m.senderId);
-          return {
-            role: "assistant",
-            content: `${partner?.name || "Partner"}: ${m.text}`,
-          };
-        }),
-      ];
+     const chatMessages = [
+  { role: "system", content: systemPrompt },
+  ...(messages || []).slice(-20).map((m: any) => {
+    if (m.senderType === "user") {
+      return { role: "user", content: m.text };
+    }
+    return {
+      role: "assistant",
+      content: m.text,
+    };
+  }),
+];
 
       const completion = await client.chat.completions.create({
         model: "llama-3.1-8b-instant",
@@ -107,3 +106,4 @@ ${personalityText}
     return res.end(JSON.stringify({ reply: "hmm, something glitched for a sec 😅" }));
   }
 }
+
