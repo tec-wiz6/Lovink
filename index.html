@@ -29,12 +29,19 @@
   html, body, #root {
     height: 100%;
   }
- @media (max-width: 768px) {
-  /* Chat input mobile fix */
+@media (max-width: 768px) {
   .chat-input {
-    font-size: 16px;          /* prevent zoom/pop on focus */
-    width: 100%;              /* let it fill container */
-    min-width: 0;             /* avoid overflow */
+    font-size: 16px !important; /* Prevents zoom (was text-sm ~14px) [web:2][web:3] */
+    width: 100%;
+    min-width: 0;
+    flex-shrink: 1; /* Allows shrinking in flex container */
+    line-height: 1.4; /* Stabilizes height on focus */
+  }
+  
+  /* Stabilize input container on focus/keyboard */
+  .chat-input:focus + button,
+  .chat-input:focus {
+    transform: translateZ(0); /* Forces hardware acceleration, prevents shift [web:13] */
   }
 }
 
