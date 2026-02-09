@@ -20,6 +20,7 @@ export const storageService = {
       return initialState;
     }
   },
+  
 
   saveData: (data: LocalStorageData) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -71,3 +72,31 @@ export const storageService = {
     localStorage.removeItem(STORAGE_KEY);
   }
 };
+
+import { CommunityMessage } from '../types';
+
+// inside initialState:
+const initialState: LocalStorageData = {
+  userProfile: null,
+  auth: null,
+  activePartners: {},
+  chatHistory: [],
+  communityChat: []
+};
+
+export const storageService = {
+  // ...existing methods...
+
+  addCommunityMessage: (msg: CommunityMessage) => {
+    const data = storageService.getData();
+    if (!data.communityChat) data.communityChat = [];
+    data.communityChat.push(msg);
+    storageService.saveData(data);
+  },
+
+  getCommunityMessages: (): CommunityMessage[] => {
+    const data = storageService.getData();
+    return data.communityChat || [];
+  }
+};
+
