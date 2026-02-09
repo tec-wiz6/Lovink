@@ -165,7 +165,7 @@ const Chat: React.FC<Props> = ({ data, onUpdate }) => {
       </div>
 
       {/* Input */}
-      <div className={`p-4 border-t sticky bottom-0 z-20 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-100'}`}>
+      <div className={`p-4 border-t z-20 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-100'}`}>
         <div className={`flex items-center gap-2 rounded-[28px] px-5 py-3 transition-all border
           ${isDark ? 'bg-slate-800 border-slate-700 focus-within:border-pink-500/50' : 'bg-gray-100 border-transparent focus-within:bg-white focus-within:border-pink-300'}`}>
           <input 
