@@ -133,10 +133,11 @@ const Dashboard: React.FC<Props> = ({ data, onLogout, onToggleTheme }) => {
           <MessageCircle size={24} strokeWidth={2.5} />
           <span className="text-[9px] font-black uppercase tracking-tighter">Chats</span>
         </button>
-        <button onClick={() => navigate('/dashboard')} className={`${isDark ? 'text-slate-500' : 'text-slate-300'} hover:text-pink-500 flex flex-col items-center gap-1 transition-transform active:scale-90`}>
-          <User size={24} strokeWidth={2.5} />
-          <span className="text-[9px] font-black uppercase tracking-tighter">You</span>
-        </button>
+<button onClick={() => navigate('/community')} className={`${isDark ? 'text-slate-500' : 'text-slate-300'} hover:text-pink-500 flex flex-col items-center gap-1 transition-transform active:scale-90`}>
+  <User size={24} strokeWidth={2.5} />
+  <span className="text-[9px] font-black uppercase tracking-tighter">Community</span>
+</button>
+
       </div>
     </div>
   );
