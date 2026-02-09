@@ -115,7 +115,7 @@ const Chat: React.FC<Props> = ({ data, onUpdate }) => {
   if (!partner) return null;
 
   return (
-    <div className={`flex-1 flex flex-col h-screen overflow-hidden transition-colors ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
+    <div className={`flex-1 flex flex-col h-full overflow-hidden transition-colors ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
       {/* Header */}
       <div className={`p-4 border-b flex items-center gap-3 shadow-md z-10 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-pink-50'}`}>
         <button onClick={() => navigate(-1)} className={`p-2 rounded-full ${isDark ? 'text-white hover:bg-slate-800' : 'text-black hover:bg-gray-100'}`}>
