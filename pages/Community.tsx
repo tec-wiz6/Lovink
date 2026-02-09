@@ -85,12 +85,14 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
       messages: currentMessages,
     });
 
-    const text = (response.reply || "").trim();
-    // ignore empty or pure-emoji replies
-    if (!text || /^[\p{Emoji}\s]+$/u.test(text)) {
-      setIsTyping(false);
-      return;
-    }
+const clean = (response.reply || "").replace(/👀/g, "").trim();
+if (!clean) {
+  setIsTyping(false);
+  return;
+}
+...
+text: clean,
+}
 
     const aiMsg: CommunityMessage = {
       id: Date.now().toString(),
@@ -252,4 +254,5 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
 };
 
 export default Community;
+
 
