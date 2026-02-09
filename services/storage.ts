@@ -1,5 +1,4 @@
-
-import { UserProfile, AuthData, ActivePartner, Message, LocalStorageData } from '../types';
+import { UserProfile, AuthData, ActivePartner, Message, LocalStorageData, CommunityMessage } from '../types';
 
 const STORAGE_KEY = 'lovink_data_v2';
 
@@ -7,7 +6,8 @@ const initialState: LocalStorageData = {
   userProfile: null,
   auth: null,
   activePartners: {},
-  chatHistory: []
+  chatHistory: [],
+  communityChat: []
 };
 
 export const storageService = {
@@ -20,7 +20,6 @@ export const storageService = {
       return initialState;
     }
   },
-  
 
   saveData: (data: LocalStorageData) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -70,23 +69,9 @@ export const storageService = {
 
   clearData: () => {
     localStorage.removeItem(STORAGE_KEY);
-  }
-};
+  },
 
-import { CommunityMessage } from '../types';
-
-// inside initialState:
-const initialState: LocalStorageData = {
-  userProfile: null,
-  auth: null,
-  activePartners: {},
-  chatHistory: [],
-  communityChat: []
-};
-
-export const storageService = {
-  // ...existing methods...
-
+  // community chat helpers
   addCommunityMessage: (msg: CommunityMessage) => {
     const data = storageService.getData();
     if (!data.communityChat) data.communityChat = [];
@@ -99,4 +84,3 @@ export const storageService = {
     return data.communityChat || [];
   }
 };
-
