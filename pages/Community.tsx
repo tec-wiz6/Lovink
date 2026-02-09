@@ -95,83 +95,85 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
     return () => clearInterval(interval);
   }, [data.userProfile, partners.length, isTyping]);
 
- const handleSend = async () => {
-  const textToSend = input.trim();
-  if (!textToSend || isTyping || !data.userProfile || partners.length === 0) return;
+  const handleSend = async () => {
+    const textToSend = input.trim();
+    if (!textToSend || isTyping || !data.userProfile || partners.length === 0) return;
 
-  const userMsg: CommunityMessage = {
-    id: Date.now().toString(),
-    senderType: 'user',
-    senderId: 'user',
-    text: textToSend,
-    timestamp: Date.now()
-  };
-  storageService.addCommunityMessage(userMsg);
-  setInput('');
-  onUpdate();
+    const userMsg: CommunityMessage = {
+      id: Date.now().toString(),
+      senderType: 'user',
+      senderId: 'user',
+      text: textToSend,
+      timestamp: Date.now()
+    };
+    storageService.addCommunityMessage(userMsg);
+    setInput('');
+    onUpdate();
 
-  const lower = textToSend.toLowerCase();
+    const lower = textToSend.toLowerCase();
 
-  // check if it's a question to everyone
-  const broadcast = lower.includes("you all") || lower.includes("all of you") || lower.includes("everyone");
+    // check if it's a question to everyone
+    const broadcast =
+      lower.includes("you all") ||
+      lower.includes("all of you") ||
+      lower.includes("everyone");
 
-  setIsTyping(true);
+    setIsTyping(true);
 
-  if (broadcast) {
-    // pick up to 3 random distinct partners
-    const shuffled = [...partners].sort(() => Math.random() - 0.5);
-    const responders = shuffled.slice(0, Math.min(3, partners.length));
+    if (broadcast) {
+      // pick up to 3 random distinct partners
+      const shuffled = [...partners].sort(() => Math.random() - 0.5);
+      const responders = shuffled.slice(0, Math.min(3, partners.length));
 
-    for (const partner of responders) {
-      const response = await aiService.communityChat({
-        userProfile: data.userProfile!,
-        partners,
-        speakingPartner: partner,
-        messages: [...messages, userMsg],
-      });
+      for (const partner of responders) {
+        const response = await aiService.communityChat({
+          userProfile: data.userProfile!,
+          partners,
+          speakingPartner: partner,
+          messages: [...messages, userMsg],
+        });
 
-      const aiMsg: CommunityMessage = {
-        id: (Date.now() + Math.random()).toString(),
-        senderType: 'partner',
-        senderId: partner.id,
-        text: response.reply,
-        timestamp: Date.now(),
-      };
-      storageService.addCommunityMessage(aiMsg);
-      onUpdate();
+        const aiMsg: CommunityMessage = {
+          id: (Date.now() + Math.random()).toString(),
+          senderType: 'partner',
+          senderId: partner.id,
+          text: response.reply,
+          timestamp: Date.now(),
+        };
+        storageService.addCommunityMessage(aiMsg);
+        onUpdate();
+      }
+
+      setIsTyping(false);
+      return;
     }
 
+    // normal single-partner reply (by name or random)
+    let partner: ActivePartner | undefined = partners.find(p =>
+      lower.includes(p.name.toLowerCase())
+    );
+    if (!partner) {
+      partner = partners[Math.floor(Math.random() * partners.length)];
+    }
+
+    const response = await aiService.communityChat({
+      userProfile: data.userProfile!,
+      partners,
+      speakingPartner: partner!,
+      messages: [...messages, userMsg]
+    });
+
+    const aiMsg: CommunityMessage = {
+      id: (Date.now() + 1).toString(),
+      senderType: 'partner',
+      senderId: partner!.id,
+      text: response.reply,
+      timestamp: Date.now()
+    };
+    storageService.addCommunityMessage(aiMsg);
     setIsTyping(false);
-    return;
-  }
-
-  // normal single-partner reply (by name or random)
-  let partner: ActivePartner | undefined = partners.find(p =>
-    lower.includes(p.name.toLowerCase())
-  );
-  if (!partner) {
-    partner = partners[Math.floor(Math.random() * partners.length)];
-  }
-
-  const response = await aiService.communityChat({
-    userProfile: data.userProfile!,
-    partners,
-    speakingPartner: partner!,
-    messages: [...messages, userMsg]
-  });
-
-  const aiMsg: CommunityMessage = {
-    id: (Date.now() + 1).toString(),
-    senderType: 'partner',
-    senderId: partner!.id,
-    text: response.reply,
-    timestamp: Date.now()
+    onUpdate();
   };
-  storageService.addCommunityMessage(aiMsg);
-  setIsTyping(false);
-  onUpdate();
-};
-
 
   return (
     <div className={`flex-1 flex flex-col h-full overflow-hidden ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
@@ -235,4 +237,3 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
 };
 
 export default Community;
-
