@@ -13,6 +13,12 @@ import Editor from './pages/Editor';
 import Chat from './pages/Chat';
 import CustomPartner from './pages/CustomPartner';
 import ChatList from './pages/ChatList';
+import Community from './pages/Community';
+
+<Route 
+  path="/community" 
+  element={isSessionActive ? <Community data={data} onUpdate={refreshData} /> : <Navigate to="/" />} 
+/>
 
 const App: React.FC = () => {
   const [data, setData] = useState<LocalStorageData>(storageService.getData());
