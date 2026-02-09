@@ -1,0 +1,8 @@
+{
+  "name": "Lovink - Local AI Companions",
+  "description": "A local-first AI companion platform for meaningful romantic connections, featuring customizable personalities and local-only data storage.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
