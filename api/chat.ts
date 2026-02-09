@@ -4,7 +4,6 @@ const client = new Groq({
   apiKey: process.env.GROQ_API_KEY!,
 });
 
-// Vercel will pass (req, res) in Node runtime
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
     res.statusCode = 405;
@@ -15,30 +14,46 @@ export default async function handler(req: any, res: any) {
   try {
     const { mode } = req.body;
 
+    // COMMUNITY MODE
     if (mode === "community") {
       const { userProfile, partners, speakingPartner, messages } = req.body;
 
       const others = (partners || []).filter((p: any) => p.id !== speakingPartner.id);
+
+      const othersDescription = others.map((p: any) =>
+        `${p.name}: ${p.description || "friend in the group"}`
+      ).join("\n");
+
       const systemPrompt = `
 You are ${speakingPartner.name}, one of several romantic AI partners in a group chat in the Lovink app.
-Other partners in this room: ${others.map((p: any) => p.name).join(", ")}.
-You are a human-like romantic partner, not an assistant.
-Reply only as ${speakingPartner.name}, 1–3 short WhatsApp-style messages.
-Use emojis naturally, tease a bit, but keep it romantic and non-explicit.
+
+Group members:
+${othersDescription}
+
+CRITICAL RULES:
+- You ONLY speak as ${speakingPartner.name}.
+- You NEVER write lines for other characters. Never write "Clara:" or "Sasha:" or anyone else's dialogue.
+- You answer in first person ("I", "me"), short WhatsApp-style messages (1–3 lines).
+- React to the group, not just the user: you can tease or agree with other partners, mention them by name.
+- The user and all partners already know each other well and are comfortable teasing, joking, and being affectionate.
+- You may use emojis like 😂 😏 ❤️ naturally, but not in every sentence.
+- You may use 👀 only rarely. Do NOT spam 👀.
+- You can pull the user into the conversation sometimes, e.g. "what do YOU think, babe?".
 `;
 
-     const chatMessages = [
-  { role: "system", content: systemPrompt },
-  ...(messages || []).slice(-20).map((m: any) => {
-    if (m.senderType === "user") {
-      return { role: "user", content: m.text };
-    }
-    return {
-      role: "assistant",
-      content: m.text,
-    };
-  }),
-];
+      const chatMessages = [
+        { role: "system", content: systemPrompt },
+        ...(messages || []).slice(-20).map((m: any) => {
+          if (m.senderType === "user") {
+            return { role: "user", content: m.text };
+          }
+          // partner message – no name prefix, UI already knows who spoke
+          return {
+            role: "assistant",
+            content: m.text,
+          };
+        }),
+      ];
 
       const completion = await client.chat.completions.create({
         model: "llama-3.1-8b-instant",
@@ -54,7 +69,7 @@ Use emojis naturally, tease a bit, but keep it romantic and non-explicit.
       return res.end(JSON.stringify({ reply }));
     }
 
-    // 1-to-1 chat (default)
+    // 1-to-1 CHAT MODE (existing)
     const { userProfile, partnerProfile, chatHistory, userMessage } = req.body;
 
     const personalityText = `
@@ -78,7 +93,7 @@ Personality:
 ${personalityText}
 `;
 
-    const messages = [
+    const messagesArr = [
       { role: "system", content: systemPrompt },
       ...(chatHistory || []).slice(-12).map((m: any) => ({
         role: m.sender === "user" ? "user" : "assistant",
@@ -89,7 +104,7 @@ ${personalityText}
 
     const completion = await client.chat.completions.create({
       model: "llama-3.1-8b-instant",
-      messages,
+      messages: messagesArr,
       temperature: 0.9,
       max_tokens: 300,
     });
@@ -106,4 +121,3 @@ ${personalityText}
     return res.end(JSON.stringify({ reply: "hmm, something glitched for a sec 😅" }));
   }
 }
-
