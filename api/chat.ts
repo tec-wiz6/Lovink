@@ -1,3 +1,41 @@
+const { mode } = req.body;
+
+if (mode === "community") {
+  const { userProfile, partners, speakingPartner, messages } = req.body;
+
+  const others = partners.filter((p: any) => p.id !== speakingPartner.id);
+  const systemPrompt = `
+You are ${speakingPartner.name}, one of several AI partners in a group chat in the Lovink app.
+Other partners in this room: ${others.map((p: any) => p.name).join(", ")}.
+You are a human-like romantic partner, not an assistant.
+Reply only as ${speakingPartner.name}, 1–3 short WhatsApp-style messages.
+Use emojis naturally, tease a bit, but keep it romantic and non-explicit.
+`;
+
+  const chatMessages = [
+    { role: "system", content: systemPrompt },
+    ...messages.slice(-20).map((m: any) => {
+      if (m.senderType === "user") {
+        return { role: "user", content: m.text };
+      }
+      const partner = partners.find((p: any) => p.id === m.senderId);
+      return {
+        role: "assistant",
+        content: `${partner?.name || "Partner"}: ${m.text}`
+      };
+    }),
+  ];
+
+  const completion = await client.chat.completions.create({
+    model: "llama-3.1-8b-instant",
+    messages: chatMessages,
+    temperature: 0.9,
+    max_tokens: 300,
+  });
+
+  const reply = completion.choices[0]?.message?.content || "👀";
+  return res.status(200).json({ reply });
+}
 // api/chat.ts
 import Groq from "groq-sdk";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
@@ -57,3 +95,4 @@ ${personalityText}
     res.status(500).json({ reply: "hmm, something glitched for a sec 😅" });
   }
 }
+
