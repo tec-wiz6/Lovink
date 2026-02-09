@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { storageService } from './services/storage';
@@ -14,11 +13,6 @@ import Chat from './pages/Chat';
 import CustomPartner from './pages/CustomPartner';
 import ChatList from './pages/ChatList';
 import Community from './pages/Community';
-
-<Route 
-  path="/community" 
-  element={isSessionActive ? <Community data={data} onUpdate={refreshData} /> : <Navigate to="/" />} 
-/>
 
 const App: React.FC = () => {
   const [data, setData] = useState<LocalStorageData>(storageService.getData());
@@ -98,6 +92,10 @@ const App: React.FC = () => {
           <Route 
             path="/chat" 
             element={isSessionActive ? <Chat data={data} onUpdate={refreshData} /> : <Navigate to="/" />} 
+          />
+          <Route
+            path="/community"
+            element={isSessionActive ? <Community data={data} onUpdate={refreshData} /> : <Navigate to="/" />}
           />
         </Routes>
       </HashRouter>
