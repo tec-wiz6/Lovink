@@ -29,6 +29,15 @@
   html, body, #root {
     height: 100%;
   }
+ @media (max-width: 768px) {
+  /* Chat input mobile fix */
+  .chat-input {
+    font-size: 16px;          /* prevent zoom/pop on focus */
+    width: 100%;              /* let it fill container */
+    min-width: 0;             /* avoid overflow */
+  }
+}
+
     </style>
 <script type="importmap">
 {
