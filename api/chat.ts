@@ -1,53 +1,61 @@
-const { mode } = req.body;
+import Groq from "groq-sdk";
 
-if (mode === "community") {
-  const { userProfile, partners, speakingPartner, messages } = req.body;
+const client = new Groq({
+  apiKey: process.env.GROQ_API_KEY!,
+});
 
-  const others = partners.filter((p: any) => p.id !== speakingPartner.id);
-  const systemPrompt = `
-You are ${speakingPartner.name}, one of several AI partners in a group chat in the Lovink app.
+// Vercel will pass (req, res) in Node runtime
+export default async function handler(req: any, res: any) {
+  if (req.method !== "POST") {
+    res.statusCode = 405;
+    res.setHeader("Content-Type", "application/json");
+    return res.end(JSON.stringify({ error: "Method not allowed" }));
+  }
+
+  try {
+    const { mode } = req.body;
+
+    if (mode === "community") {
+      const { userProfile, partners, speakingPartner, messages } = req.body;
+
+      const others = (partners || []).filter((p: any) => p.id !== speakingPartner.id);
+      const systemPrompt = `
+You are ${speakingPartner.name}, one of several romantic AI partners in a group chat in the Lovink app.
 Other partners in this room: ${others.map((p: any) => p.name).join(", ")}.
 You are a human-like romantic partner, not an assistant.
 Reply only as ${speakingPartner.name}, 1–3 short WhatsApp-style messages.
 Use emojis naturally, tease a bit, but keep it romantic and non-explicit.
 `;
 
-  const chatMessages = [
-    { role: "system", content: systemPrompt },
-    ...messages.slice(-20).map((m: any) => {
-      if (m.senderType === "user") {
-        return { role: "user", content: m.text };
-      }
-      const partner = partners.find((p: any) => p.id === m.senderId);
-      return {
-        role: "assistant",
-        content: `${partner?.name || "Partner"}: ${m.text}`
-      };
-    }),
-  ];
+      const chatMessages = [
+        { role: "system", content: systemPrompt },
+        ...(messages || []).slice(-20).map((m: any) => {
+          if (m.senderType === "user") {
+            return { role: "user", content: m.text };
+          }
+          const partner = partners.find((p: any) => p.id === m.senderId);
+          return {
+            role: "assistant",
+            content: `${partner?.name || "Partner"}: ${m.text}`,
+          };
+        }),
+      ];
 
-  const completion = await client.chat.completions.create({
-    model: "llama-3.1-8b-instant",
-    messages: chatMessages,
-    temperature: 0.9,
-    max_tokens: 300,
-  });
+      const completion = await client.chat.completions.create({
+        model: "llama-3.1-8b-instant",
+        messages: chatMessages,
+        temperature: 0.9,
+        max_tokens: 300,
+      });
 
-  const reply = completion.choices[0]?.message?.content || "👀";
-  return res.status(200).json({ reply });
-}
-// api/chat.ts
-import Groq from "groq-sdk";
-import type { VercelRequest, VercelResponse } from "@vercel/node";
+      const reply = completion.choices[0]?.message?.content || "👀";
 
-const client = new Groq({ apiKey: process.env.GROQ_API_KEY! });
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "application/json");
+      return res.end(JSON.stringify({ reply }));
+    }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  try {
+    // 1-to-1 chat (default)
     const { userProfile, partnerProfile, chatHistory, userMessage } = req.body;
 
     const personalityText = `
@@ -81,7 +89,7 @@ ${personalityText}
     ];
 
     const completion = await client.chat.completions.create({
-      model: "llama-3.1-8b-instant", // choose any Groq model
+      model: "llama-3.1-8b-instant",
       messages,
       temperature: 0.9,
       max_tokens: 300,
@@ -89,10 +97,13 @@ ${personalityText}
 
     const reply = completion.choices[0]?.message?.content || "I'm here 💗";
 
-    res.status(200).json({ reply, updatedMemories: [] });
+    res.statusCode = 200;
+    res.setHeader("Content-Type", "application/json");
+    return res.end(JSON.stringify({ reply, updatedMemories: [] }));
   } catch (e) {
     console.error(e);
-    res.status(500).json({ reply: "hmm, something glitched for a sec 😅" });
+    res.statusCode = 500;
+    res.setHeader("Content-Type", "application/json");
+    return res.end(JSON.stringify({ reply: "hmm, something glitched for a sec 😅" }));
   }
 }
-
