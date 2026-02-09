@@ -271,38 +271,33 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
           isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-100'
         }`}
       >
-        <div className="flex items-center gap-2 rounded-[28px] px-5 py-3 border">
-<input
-  className={`chat-input flex-1 bg-transparent py-1 text-sm focus:outline-none font-bold ${
-    isDark ? 'text-white' : 'text-black'
-  }`}
-  placeholder="Say something to the room..."
-  value={input}
-  onChange={e => setInput(e.target.value)}
-  onKeyDown={e => {
-    if (e.key === 'Enter') {
-      if (window.innerWidth <= 768) {
-        e.preventDefault();      // mobile: don't send on Enter
-      } else {
-        e.preventDefault();
-        handleSend();            // desktop: Enter sends
-      }
-    }
-  }}
-/>
+<div className="flex items-center gap-2 rounded-[28px] px-4 py-3 border w-full flex-wrap"> {/* Changed px-5→px-4, added w-full flex-wrap */}
+  <input className={`chat-input flex-1 bg-transparent py-1 text-base focus:outline-none font-bold ${isDark ? 'text-white' : 'text-black'}`} 
+         placeholder="Say something to the room..."
+         value={input}
+         onChange={e => setInput(e.target.value)}
+         onKeyDown={e => {
+           if (e.key === 'Enter') {
+             if (window.innerWidth <= 768) {
+               e.preventDefault();
+             } else {
+               e.preventDefault();
+               handleSend();
+             }
+           }
+         }}
+  />
+  {input.trim() && (
+    <button onClick={handleSend} className="text-pink-500">
+      <Send size={22} fill="currentColor" />
+    </button>
+  )}
+</div>
 
-
-          {input.trim() && (
-            <button onClick={handleSend} className="text-pink-500">
-              <Send size={22} fill="currentColor" />
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
   );
 };
 
 export default Community;
+
 
 
