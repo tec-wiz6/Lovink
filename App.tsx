@@ -55,7 +55,7 @@ const App: React.FC = () => {
   const isDark = theme === 'dark';
 
   return (
-    <div className={`min-h-screen max-w-md mx-auto shadow-xl relative overflow-hidden flex flex-col border-x transition-colors duration-300
+    <div className={`h-full max-w-md mx-auto shadow-xl relative overflow-hidden flex flex-col border-x transition-colors duration-300
       ${isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-white border-gray-100 text-slate-900'}`}>
       <HashRouter>
         <Routes>
