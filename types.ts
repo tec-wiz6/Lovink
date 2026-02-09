@@ -64,3 +64,11 @@ export interface LocalStorageData {
   activePartners: Record<string, ActivePartner>;
   chatHistory: Message[];
 }
+export interface CommunityMessage {
+  id: string;
+  senderType: 'user' | 'partner';
+  senderId: string; // 'user' or partner.id
+  text: string;
+  timestamp: number;
+}
+
