@@ -20,11 +20,80 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
   const partners: ActivePartner[] = Object.values(data.activePartners || {});
   const messages = storageService.getCommunityMessages();
 
+  // auto-scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isTyping]);
+
+  // initial: they start talking even if you say nothing
+  useEffect(() => {
+    if (!data.userProfile || partners.length === 0) return;
+
+    const existing = storageService.getCommunityMessages();
+    if (existing.length > 0) return;
+
+    const start = async () => {
+      const partner = partners[Math.floor(Math.random() * partners.length)];
+      setIsTyping(true);
+      const response = await aiService.communityChat({
+        userProfile: data.userProfile!,
+        partners,
+        speakingPartner: partner,
+        messages: [],
+      });
+      const aiMsg: CommunityMessage = {
+        id: Date.now().toString(),
+        senderType: 'partner',
+        senderId: partner.id,
+        text: response.reply,
+        timestamp: Date.now(),
+      };
+      storageService.addCommunityMessage(aiMsg);
+      setIsTyping(false);
+      onUpdate();
+    };
+
+    start();
+  }, [data.userProfile, partners.length]);
+
+  // interval: they gist every X seconds
+  useEffect(() => {
+    if (!data.userProfile || partners.length === 0) return;
+
+    const interval = setInterval(async () => {
+      if (isTyping) return;
+
+      const currentMessages = storageService.getCommunityMessages();
+      if (currentMessages.length === 0) return;
+
+      const partner = partners[Math.floor(Math.random() * partners.length)];
+
+      setIsTyping(true);
+
+      const response = await aiService.communityChat({
+        userProfile: data.userProfile!,
+        partners,
+        speakingPartner: partner,
+        messages: currentMessages,
+      });
+
+      const aiMsg: CommunityMessage = {
+        id: Date.now().toString(),
+        senderType: 'partner',
+        senderId: partner.id,
+        text: response.reply,
+        timestamp: Date.now(),
+      };
+
+      storageService.addCommunityMessage(aiMsg);
+      setIsTyping(false);
+      onUpdate();
+    }, 20000); // every 20s – adjust if you want
+
+    return () => clearInterval(interval);
+  }, [data.userProfile, partners.length, isTyping]);
 
   const handleSend = async () => {
     const textToSend = input.trim();
@@ -41,21 +110,29 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
     setInput('');
     onUpdate();
 
-    // pick a random partner to answer
-    const partner = partners[Math.floor(Math.random() * partners.length)];
+    // decide who replies: if you called a name, that one talks
+    const lower = textToSend.toLowerCase();
+    let partner: ActivePartner | undefined = partners.find(p =>
+      lower.includes(p.name.toLowerCase())
+    );
+
+    if (!partner) {
+      partner = partners[Math.floor(Math.random() * partners.length)];
+    }
+
     setIsTyping(true);
 
     const response = await aiService.communityChat({
-      userProfile: data.userProfile,
+      userProfile: data.userProfile!,
       partners,
-      speakingPartner: partner,
+      speakingPartner: partner!,
       messages: [...messages, userMsg]
     });
 
     const aiMsg: CommunityMessage = {
       id: (Date.now() + 1).toString(),
       senderType: 'partner',
-      senderId: partner.id,
+      senderId: partner!.id,
       text: response.reply,
       timestamp: Date.now()
     };
@@ -95,7 +172,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
         })}
         {isTyping && (
           <div className="flex justify-start">
-            <div className="px-4 py-3 rounded-2xl flex gap-1.5 shadow-md border">
+            <div className={`px-4 py-3 rounded-2xl flex gap-1.5 shadow-md border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-pink-50'}`}>
               <div className="w-1.5 h-1.5 bg-pink-500 rounded-full" />
               <div className="w-1.5 h-1.5 bg-pink-500 rounded-full" />
               <div className="w-1.5 h-1.5 bg-pink-500 rounded-full" />
