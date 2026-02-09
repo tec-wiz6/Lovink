@@ -21,6 +21,14 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
   const messages = storageService.getCommunityMessages();
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
 
+  // Simple emoji-only checker (fixes regex build error)
+  const isEmojiOnly = (text: string): boolean => {
+    if (!text?.trim()) return true;
+    // Basic common emoji ranges + spaces (no complex Unicode regex)
+    const emojiPattern = /^[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s\t\n\r😀😃😄😁😆😅😂🤣🥰😍🤩😘👀]+$/u;
+    return emojiPattern.test(text);
+  };
+
   // auto-scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
@@ -80,7 +88,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
 
       // don't auto-talk if the last message is just emojis
       const last = currentMessages[currentMessages.length - 1];
-      if (last && /^[\p{Emoji}\s]+$/u.test(last.text || '')) {
+      if (last && isEmojiOnly(last.text)) {  // FIXED: using helper function
         return;
       }
 
@@ -97,7 +105,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
 
       const clean = (response.reply || '').replace(/👀/g, '').trim();
       // ignore empty or pure-emoji replies
-      if (!clean || /^[\p{Emoji}\s]+$/u.test(clean)) {
+      if (!clean || isEmojiOnly(clean)) {  // FIXED: using helper function
         setIsTyping(false);
         return;
       }
@@ -116,7 +124,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
     }, 30000); // every 30s – calmer
 
     return () => clearInterval(interval);
-  }, [data.userProfile, partners.length, isTyping, isMobile]);
+  }, [data.userProfile, partners.length, isTyping, isMobile, isEmojiOnly]);  // Added dependency
 
   const handleSend = async () => {
     const textToSend = input.trim();
@@ -233,8 +241,7 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
           return (
             <div key={m.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
               <div
-                className={`max-w-[80%] p-3 rounded-2xl text-sm shadow
-                ${
+                className={`max-w-[80%] p-3 rounded-2xl text-sm shadow ${
                   isUser
                     ? 'bg-pink-600 text-white'
                     : isDark
@@ -271,33 +278,34 @@ const Community: React.FC<Props> = ({ data, onUpdate }) => {
           isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-100'
         }`}
       >
-<div className="flex items-center gap-2 rounded-[28px] px-4 py-3 border w-full flex-wrap"> {/* Changed px-5→px-4, added w-full flex-wrap */}
-  <input className={`chat-input flex-1 bg-transparent py-1 text-base focus:outline-none font-bold ${isDark ? 'text-white' : 'text-black'}`} 
-         placeholder="Say something to the room..."
-         value={input}
-         onChange={e => setInput(e.target.value)}
-         onKeyDown={e => {
-           if (e.key === 'Enter') {
-             if (window.innerWidth <= 768) {
-               e.preventDefault();
-             } else {
-               e.preventDefault();
-               handleSend();
-             }
-           }
-         }}
-  />
-  {input.trim() && (
-    <button onClick={handleSend} className="text-pink-500">
-      <Send size={22} fill="currentColor" />
-    </button>
-  )}
-</div>
-
+        <div className="flex items-center gap-2 rounded-[28px] px-4 py-3 border w-full flex-wrap">
+          <input
+            className={`chat-input flex-1 bg-transparent py-1 text-base focus:outline-none font-bold ${
+              isDark ? 'text-white' : 'text-black'
+            }`}
+            placeholder="Say something to the room..."
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                if (window.innerWidth <= 768) {
+                  e.preventDefault(); // mobile: don't send
+                } else {
+                  e.preventDefault();
+                  handleSend(); // desktop: send
+                }
+              }
+            }}
+          />
+          {input.trim() && (
+            <button onClick={handleSend} className="text-pink-500">
+              <Send size={22} fill="currentColor" />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 
 export default Community;
-
-
-
