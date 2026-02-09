@@ -63,6 +63,8 @@ export interface LocalStorageData {
   auth: AuthData | null;
   activePartners: Record<string, ActivePartner>;
   chatHistory: Message[];
+  communityChat?: CommunityMessage[];
+
 }
 export interface CommunityMessage {
   id: string;
