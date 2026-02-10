@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { CHARACTER_TEMPLATES } from '../constants';
 import { storageService } from '../services/storage';
 import { LocalStorageData, BaseCharacterTemplate, Gender } from '../types';
-import { ArrowLeft, Plus, Heart, Sparkles } from 'lucide-react';
+import { ArrowLeft, Plus, Heart, Sparkles, Lock, Eye, EyeOff } from 'lucide-react';
 
 interface Props {
   data: LocalStorageData;
@@ -23,6 +23,7 @@ const Gallery: React.FC<Props> = ({ data, onSelect }) => {
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
   const [passwordValue, setPasswordValue] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [showPasswordVisible, setShowPasswordVisible] = useState(false);
 
   const filteredCharacters = CHARACTER_TEMPLATES.filter(c => {
     if (targetGender === 'all') return true;
@@ -38,6 +39,19 @@ const Gallery: React.FC<Props> = ({ data, onSelect }) => {
     });
     onSelect();
     navigate(`/chat?id=${selected.id}`);
+  };
+
+  const submitPassword = () => {
+    if (!selected) return;
+    if (passwordValue === 'nooneknows') {
+      const key = `dev_partner_unlocked_${selected.id}`;
+      localStorage.setItem(key, 'true');
+      setShowPasswordPrompt(false);
+      setShowPasswordVisible(false);
+      handleMakePartner();
+    } else {
+      setPasswordError('Incorrect password — access denied');
+    }
   };
 
   return (
@@ -140,28 +154,54 @@ const Gallery: React.FC<Props> = ({ data, onSelect }) => {
 
       {showPasswordPrompt && selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setShowPasswordPrompt(false)} />
-          <div className={`relative w-full max-w-sm mx-auto rounded-[24px] p-6 shadow-2xl ${isDark ? 'bg-slate-900 text-white' : 'bg-white text-gray-900'}`}>
-            <h3 className="font-black text-xl mb-2">Enter password to access this partner</h3>
-            <p className="text-sm mb-4 italic">This partner is exclusive for devs.</p>
-            <input value={passwordValue} onChange={e => setPasswordValue(e.target.value)} placeholder="Password" className="w-full p-3 rounded-md mb-2 text-sm" />
-            {passwordError && <div className="text-xs text-red-500 mb-2">{passwordError}</div>}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowPasswordPrompt(false)} />
+          <div className={`relative w-full max-w-md mx-auto rounded-2xl p-6 shadow-2xl transform transition duration-200 ${isDark ? 'bg-slate-900 text-white' : 'bg-white text-gray-900'}`}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className={`p-2 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-gray-100'}`}>
+                <Lock size={18} />
+              </div>
+              <div>
+                <h3 className="font-black text-lg">Protected partner</h3>
+                <p className="text-xs opacity-80">Enter the password to access this developer partner.</p>
+              </div>
+            </div>
+
+            <p className="text-sm mb-4 italic opacity-80">This partner is exclusive for devs.</p>
+
+            <div className="mb-3">
+              <div className="relative">
+                <input
+                  type={showPasswordVisible ? 'text' : 'password'}
+                  value={passwordValue}
+                  onChange={e => { setPasswordValue(e.target.value); setPasswordError(''); }}
+                  onKeyDown={e => { if (e.key === 'Enter') submitPassword(); }}
+                  autoFocus
+                  aria-label="Developer partner password"
+                  placeholder="Enter password"
+                  className={`w-full pr-12 p-3 rounded-lg border ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordVisible(v => !v)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-sm opacity-80 hover:opacity-100"
+                  aria-label={showPasswordVisible ? 'Hide password' : 'Show password'}
+                >
+                  {showPasswordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {passwordError && <div className="text-xs text-red-500 mt-2">{passwordError}</div>}
+            </div>
+
             <div className="flex gap-3">
-              <button onClick={() => setShowPasswordPrompt(false)} className={`flex-1 py-3 rounded-md ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-600'}`}>Cancel</button>
-              <button onClick={() => {
-                if (passwordValue === 'nooneknows') {
-                  const key = `dev_partner_unlocked_${selected.id}`;
-                  localStorage.setItem(key, 'true');
-                  setShowPasswordPrompt(false);
-                  handleMakePartner();
-                } else {
-                  setPasswordError('Incorrect password — access denied');
-                }
-              }} className="flex-[2] bg-pink-500 text-white py-3 rounded-md">Unlock & Start</button>
+              <button onClick={() => setShowPasswordPrompt(false)} className={`flex-1 py-3 rounded-md font-black transition ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Cancel</button>
+              <button onClick={() => submitPassword()} className="flex-[2] bg-pink-500 text-white py-3 rounded-md font-black shadow hover:bg-pink-600">Unlock & Start</button>
             </div>
           </div>
         </div>
       )}
+
+      {/* helper: password submit logic */}
+      
     </div>
   );
 };
