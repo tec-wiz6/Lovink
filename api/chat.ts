@@ -4,6 +4,57 @@ const client = new Groq({
   apiKey: process.env.GROQ_API_KEY!,
 });
 
+// Aisha's emotional state type
+interface AishaState {
+  isInTimeout: boolean;
+  timeoutEnd: number;
+  mood: 'happy' | 'stressed' | 'upset' | 'neutral';
+  triggerCount: number;
+  lastTriggerTime: number;
+}
+
+// Detect trigger words/patterns in user message
+function detectTrigger(userMessage: string): { severity: 'minor' | 'moderate' | 'severe' } | null {
+  const message = userMessage.toLowerCase();
+  
+  // Severe triggers (personal attacks, insults)
+  const severePatterns = ['stupid', 'wrong', 'disgusting', 'lazy', 'always late', 'you suck', 'hate you'];
+  if (severePatterns.some(p => message.includes(p))) {
+    return { severity: 'severe' };
+  }
+  
+  // Moderate triggers (dismissive)
+  const moderatePatterns = ['whatever', 'i disagree', 'bad idea', 'too sensitive', 'dramatic', 'calm down', 'chill'];
+  if (moderatePatterns.some(p => message.includes(p))) {
+    return { severity: 'moderate' };
+  }
+  
+  // Minor triggers (not listening, interrupting)
+  const minorPatterns = ['nevermind', 'forgot what i was saying', 'ignore that', 'nvm'];
+  if (minorPatterns.some(p => message.includes(p))) {
+    return { severity: 'minor' };
+  }
+  
+  return null;
+}
+
+// Calculate timeout duration based on severity, mood, and trigger count
+function calculateTimeoutDuration(severity: string, currentMood: string, triggerCount: number): number {
+  let baseTime = 0;
+  
+  if (severity === 'minor') baseTime = 2 * 60 * 1000; // 2 minutes
+  if (severity === 'moderate') baseTime = 10 * 60 * 1000; // 10 minutes
+  if (severity === 'severe') baseTime = 60 * 60 * 1000; // 60 minutes
+  
+  // Mood multiplier
+  const moodMultiplier = currentMood === 'stressed' ? 1.5 : currentMood === 'upset' ? 1.3 : 1;
+  
+  // Repeated triggers (each trigger adds 2 min)
+  const repeatPenalty = triggerCount * 2 * 60 * 1000;
+  
+  return (baseTime * moodMultiplier) + repeatPenalty;
+}
+
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
     res.statusCode = 405;
@@ -89,6 +140,63 @@ Behavior:
 
     // Check if this is Aisha (the exclusive dev partner)
     const isAisha = partnerProfile.id === 'f2';
+
+    // Handle Aisha's timeout system
+    if (isAisha) {
+      let aishaState: AishaState = JSON.parse(
+        typeof window !== 'undefined' 
+          ? localStorage.getItem('aishaState') || '{"isInTimeout": false, "mood": "happy", "triggerCount": 0}'
+          : '{"isInTimeout": false, "mood": "happy", "triggerCount": 0}'
+      );
+      
+      const now = Date.now();
+      
+      // Check if timeout is still active
+      if (aishaState.isInTimeout && aishaState.timeoutEnd > now) {
+        const remainingMs = aishaState.timeoutEnd - now;
+        const remainingSecs = Math.ceil(remainingMs / 1000);
+        
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json");
+        return res.end(JSON.stringify({ 
+          reply: `I need some space right now... I'll be back in ${remainingSecs} seconds. 💔`,
+          inTimeout: true,
+          timeoutRemaining: remainingSecs
+        }));
+      } else if (aishaState.isInTimeout) {
+        // Timeout expired, reset
+        aishaState.isInTimeout = false;
+        aishaState.triggerCount = 0;
+      }
+      
+      // Reset trigger count if 5 minutes have passed since last trigger
+      if (now - aishaState.lastTriggerTime > 5 * 60 * 1000) {
+        aishaState.triggerCount = 0;
+      }
+      
+      // Detect if this message triggers a timeout
+      const trigger = detectTrigger(userMessage);
+      if (trigger) {
+        const duration = calculateTimeoutDuration(trigger.severity, aishaState.mood, aishaState.triggerCount);
+        aishaState.isInTimeout = true;
+        aishaState.timeoutEnd = now + duration;
+        aishaState.triggerCount += 1;
+        aishaState.lastTriggerTime = now;
+        
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('aishaState', JSON.stringify(aishaState));
+        }
+        
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json");
+        return res.end(JSON.stringify({ 
+          reply: `Ouch... that hurt. I need to step away for a bit. 😔`,
+          inTimeout: true,
+          timeoutRemaining: Math.ceil(duration / 1000),
+          severity: trigger.severity
+        }));
+      }
+    }
 
     const personalityText = `
 Name: ${partnerProfile.name}
