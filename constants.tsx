@@ -61,12 +61,12 @@ export const CHARACTER_TEMPLATES: BaseCharacterTemplate[] = [
     imageUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=400&fit=crop'
   },
   {
-    id: 'f2', name: 'Sasha', gender: 'female',
-    description: 'Your personal motivation. She’ll push your buttons in the best way possible.',
+    id: 'f2', name: 'Aisha', gender: 'female',
+    description: 'Untouchable. Exclusive. She\'s in a league of her own—only the worthy get her attention.',
     tags: ['Bold', 'Fire', 'Motivated'],
     defaultTone: 'confident', defaultEmojiUsage: 'heavy', defaultClinginess: 'medium',
-    interests: ['Fitness', 'Yoga'],
-    imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop'
+    interests: ['Fitness', 'Yoga', 'Cooking', 'Luxury', 'Nightlife', 'Fashion', 'Travel'],
+    imageUrl: 'https://images.unsplash.com/photo-1673717802711-5d7e833162ad?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
   },
   {
     id: 'f3', name: 'Clara', gender: 'female',
