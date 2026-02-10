@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { CHARACTER_TEMPLATES } from '../constants';
 import { storageService } from '../services/storage';
 import { LocalStorageData, BaseCharacterTemplate, Gender } from '../types';
-import { ArrowLeft, Plus, Heart, Sparkles } from 'lucide-react';
+import { ArrowLeft, Plus, Heart, Sparkles, Lock, X } from 'lucide-react';
 
 interface Props {
   data: LocalStorageData;
@@ -20,6 +20,11 @@ const Gallery: React.FC<Props> = ({ data, onSelect }) => {
   const targetGender = userGender === 'male' ? 'female' : userGender === 'female' ? 'male' : 'all';
   
   const [selected, setSelected] = useState<BaseCharacterTemplate | null>(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const CORRECT_PASSWORD = 'nooneknows';
+  const DEV_PARTNER_ID = 'f2';
 
   const filteredCharacters = CHARACTER_TEMPLATES.filter(c => {
     if (targetGender === 'all') return true;
@@ -28,6 +33,28 @@ const Gallery: React.FC<Props> = ({ data, onSelect }) => {
 
   const handleMakePartner = () => {
     if (!selected) return;
+    
+    // Check if this is the exclusive dev partner (Aisha - f2)
+    if (selected.id === DEV_PARTNER_ID) {
+      // Check if already verified in this session
+      const verifiedPartners = JSON.parse(localStorage.getItem('devVerified') || '[]');
+      if (verifiedPartners.includes(DEV_PARTNER_ID)) {
+        // Already verified, proceed directly
+        proceedToChat();
+      } else {
+        // Show password modal
+        setShowPasswordModal(true);
+        setPasswordInput('');
+        setPasswordError('');
+      }
+    } else {
+      // Not the exclusive partner, proceed normally
+      proceedToChat();
+    }
+  };
+
+  const proceedToChat = () => {
+    if (!selected) return;
     storageService.addActivePartner({
       ...selected,
       nickname: '', 
@@ -35,6 +62,24 @@ const Gallery: React.FC<Props> = ({ data, onSelect }) => {
     });
     onSelect();
     navigate(`/chat?id=${selected.id}`);
+    setSelected(null);
+    setShowPasswordModal(false);
+    setPasswordInput('');
+  };
+
+  const handlePasswordSubmit = () => {
+    if (passwordInput === CORRECT_PASSWORD) {
+      // Mark as verified
+      const verifiedPartners = JSON.parse(localStorage.getItem('devVerified') || '[]');
+      if (!verifiedPartners.includes(DEV_PARTNER_ID)) {
+        verifiedPartners.push(DEV_PARTNER_ID);
+        localStorage.setItem('devVerified', JSON.stringify(verifiedPartners));
+      }
+      proceedToChat();
+    } else {
+      setPasswordError('Incorrect password. Access denied.');
+      setPasswordInput('');
+    }
   };
 
   return (
@@ -108,10 +153,64 @@ const Gallery: React.FC<Props> = ({ data, onSelect }) => {
             <p className={`text-sm leading-relaxed mb-8 italic ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
               "{selected.description}"
             </p>
+            {selected.id === DEV_PARTNER_ID && (
+              <div className={`mb-6 p-3 rounded-2xl flex items-center gap-2 ${isDark ? 'bg-purple-900/30 border border-purple-500/50' : 'bg-purple-50 border border-purple-200'}`}>
+                <Lock size={16} className="text-purple-500" />
+                <p className="text-sm font-bold text-purple-600">Exclusive for Dev Only 💯</p>
+              </div>
+            )}
             <div className="flex gap-3">
               <button onClick={() => setSelected(null)} className={`flex-1 py-4 rounded-3xl font-black transition ${isDark ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>CANCEL</button>
               <button onClick={handleMakePartner} className="flex-[2] bg-pink-500 text-white py-4 rounded-3xl font-black shadow-xl hover:bg-pink-600 active:scale-95 transition transform">START CHAT</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowPasswordModal(false)} />
+          <div className={`relative w-full max-w-sm rounded-[32px] p-8 shadow-2xl animate-in scale-in duration-300
+            ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
+            <button onClick={() => setShowPasswordModal(false)} className={`absolute top-4 right-4 p-1.5 rounded-full ${isDark ? 'text-slate-400 hover:bg-slate-800' : 'text-gray-400 hover:bg-gray-100'}`}>
+              <X size={20} />
+            </button>
+            <div className="flex items-center justify-center mb-6">
+              <Lock size={32} className="text-purple-500" />
+            </div>
+            <h3 className={`text-2xl font-black text-center mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              Exclusive Access
+            </h3>
+            <p className={`text-center text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>
+              Enter the password to access the devs partner
+            </p>
+            
+            <input
+              type="password"
+              value={passwordInput}
+              onChange={(e) => {
+                setPasswordInput(e.target.value);
+                setPasswordError('');
+              }}
+              onKeyPress={(e) => e.key === 'Enter' && handlePasswordSubmit()}
+              placeholder="Enter password..."
+              className={`w-full px-4 py-3 rounded-2xl mb-4 font-bold tracking-widest text-center border-2 transition focus:outline-none
+                ${isDark 
+                  ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:border-purple-500' 
+                  : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-purple-500'}`}
+              autoFocus
+            />
+            
+            {passwordError && (
+              <p className="text-red-500 text-sm font-bold text-center mb-4">{passwordError}</p>
+            )}
+            
+            <button
+              onClick={handlePasswordSubmit}
+              className="w-full bg-purple-500 text-white py-3 rounded-2xl font-black shadow-lg hover:bg-purple-600 active:scale-95 transition transform"
+            >
+              UNLOCK ACCESS
+            </button>
           </div>
         </div>
       )}
