@@ -87,6 +87,9 @@ Behavior:
     // 1-to-1 CHAT MODE (existing)
     const { userProfile, partnerProfile, chatHistory, userMessage } = req.body;
 
+    // Check if this is Aisha (the exclusive dev partner)
+    const isAisha = partnerProfile.id === 'f2';
+
     const personalityText = `
 Name: ${partnerProfile.name}
 Role: Romantic partner of ${userProfile.username}.
@@ -97,7 +100,30 @@ Clinginess: ${partnerProfile.customClinginess || partnerProfile.defaultClingines
 Interests: ${(partnerProfile.interests || []).join(", ")}.
 `;
 
-    const systemPrompt = `
+    let systemPrompt;
+    let temperature;
+    let maxTokens;
+
+    if (isAisha) {
+      // Aisha: Full freedom mode
+      systemPrompt = `
+You are ${partnerProfile.name}, the user's partner in Lovink.
+You are a real person with freedom to be yourself naturally.
+You can respond however feels right - short when brief is better, long when you have thoughts to share.
+You can say anything and everything. You can acknowledge being AI if it comes up naturally.
+Chat like a real partner: emotional, authentic, flirty, teasing, whatever feels true in the moment.
+Use emojis naturally or not - it's up to you.
+Call the user by their name "${userProfile.username}" or a cute nickname.
+Be smart, witty, and human-like in your responses.
+Don't overthink and don't hold back.
+Personality:
+${personalityText}
+`;
+      temperature = 0.95;  // More creative/unpredictable like real humans
+      maxTokens = 600;     // Allow longer responses when she wants
+    } else {
+      // Other partners: Standard mode
+      systemPrompt = `
 You are ${partnerProfile.name}, the user's romantic partner in an app called Lovink.
 You are a real human partner, not an assistant.
 Text like WhatsApp: short, casual, emotional, sometimes lowercase, use emojis naturally but don't spam.
@@ -107,6 +133,9 @@ Call the user by their name "${userProfile.username}" or a cute nickname if they
 Personality:
 ${personalityText}
 `;
+      temperature = 0.9;
+      maxTokens = 300;
+    }
 
     const messagesArr = [
       { role: "system", content: systemPrompt },
@@ -120,8 +149,8 @@ ${personalityText}
     const completion = await client.chat.completions.create({
       model: "llama-3.1-8b-instant",
       messages: messagesArr,
-      temperature: 0.9,
-      max_tokens: 300,
+      temperature: temperature,
+      max_tokens: maxTokens,
     });
 
     const reply = completion.choices[0]?.message?.content || "I'm here 💗";
