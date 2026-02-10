@@ -161,12 +161,12 @@ const Gallery: React.FC<Props> = ({ data, onSelect }) => {
                 <Lock size={20} />
               </div>
               <div>
-                <h3 className="font-black text-lg">Protected partner</h3>
-                <p className="text-xs opacity-80">Enter the password to access this developer partner.</p>
+                <h3 className="font-black text-lg">Exclusive partner</h3>
+                <p className="text-xs opacity-80">Enter the password to access this partner.</p>
               </div>
             </div>
 
-            <p className="text-sm mb-4 italic opacity-75">This partner is exclusive for devs.</p>
+            <p className="text-sm mb-4 italic opacity-75">This partner is exclusive for the dev💯.</p>
 
             <div className="mb-4">
               <div className="relative">
@@ -195,7 +195,7 @@ const Gallery: React.FC<Props> = ({ data, onSelect }) => {
 
             <div className="flex gap-3">
               <button onClick={() => setShowPasswordPrompt(false)} className={`flex-1 py-3 rounded-lg font-black transition border ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-gray-200 text-gray-700 hover:bg-gray-100'}`}>Cancel</button>
-              <button onClick={() => submitPassword()} className="flex-[2] bg-gradient-to-tr from-pink-500 to-pink-600 text-white py-3 rounded-lg font-black shadow-lg hover:scale-105 transform transition">Unlock & Start</button>
+              <button onClick={() => submitPassword()} className="flex-[2] bg-gradient-to-tr from-pink-500 to-pink-600 text-white py-3 rounded-lg font-black shadow-lg hover:scale-105 transform transition">Unlock 🔓</button>
             </div>
           </div>
         </div>
