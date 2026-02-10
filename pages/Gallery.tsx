@@ -104,7 +104,7 @@ const Gallery: React.FC<Props> = ({ data, onSelect }) => {
                   {/* card note / badge */}
                   {('cardNote' in char) && (
                     // @ts-ignore - cardNote is an optional extra property from constants
-                    <div className={`mt-3 text-[11px] font-black ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{(char as any).cardNote}</div>
+                    <div className={`mt-3 inline-block text-[11px] font-black px-2 py-1 rounded-full ${isDark ? 'bg-pink-900/20 text-pink-300 border border-pink-800' : 'bg-pink-50 text-pink-600 border border-pink-100'}`}>{(char as any).cardNote}</div>
                   )}
               </div>
             </div>
@@ -155,10 +155,10 @@ const Gallery: React.FC<Props> = ({ data, onSelect }) => {
       {showPasswordPrompt && selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowPasswordPrompt(false)} />
-          <div className={`relative w-full max-w-md mx-auto rounded-2xl p-6 shadow-2xl transform transition duration-200 ${isDark ? 'bg-slate-900 text-white' : 'bg-white text-gray-900'}`}>
-            <div className="flex items-center gap-3 mb-3">
-              <div className={`p-2 rounded-lg ${isDark ? 'bg-slate-800' : 'bg-gray-100'}`}>
-                <Lock size={18} />
+          <div className={`relative w-full max-w-md mx-auto rounded-3xl p-6 shadow-2xl transform transition duration-200 ${isDark ? 'bg-slate-900 text-white border border-slate-800' : 'bg-white text-gray-900 border border-gray-100'}`}>
+            <div className="flex items-center gap-4 mb-4">
+              <div className="p-3 rounded-xl shadow-lg bg-gradient-to-tr from-pink-500 to-pink-400 text-white">
+                <Lock size={20} />
               </div>
               <div>
                 <h3 className="font-black text-lg">Protected partner</h3>
@@ -166,9 +166,9 @@ const Gallery: React.FC<Props> = ({ data, onSelect }) => {
               </div>
             </div>
 
-            <p className="text-sm mb-4 italic opacity-80">This partner is exclusive for devs.</p>
+            <p className="text-sm mb-4 italic opacity-75">This partner is exclusive for devs.</p>
 
-            <div className="mb-3">
+            <div className="mb-4">
               <div className="relative">
                 <input
                   type={showPasswordVisible ? 'text' : 'password'}
@@ -178,23 +178,24 @@ const Gallery: React.FC<Props> = ({ data, onSelect }) => {
                   autoFocus
                   aria-label="Developer partner password"
                   placeholder="Enter password"
-                  className={`w-full pr-12 p-3 rounded-lg border ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
+                  className={`w-full pr-12 p-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-pink-400 transition ${isDark ? 'bg-slate-800 border-slate-700 text-white shadow-sm' : 'bg-gray-50 border-gray-200 text-gray-900 shadow-sm'}`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPasswordVisible(v => !v)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-sm opacity-80 hover:opacity-100"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-sm opacity-90 hover:opacity-100"
                   aria-label={showPasswordVisible ? 'Hide password' : 'Show password'}
                 >
                   {showPasswordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
               {passwordError && <div className="text-xs text-red-500 mt-2">{passwordError}</div>}
+              <div className="text-[11px] mt-2 opacity-70">Password will be remembered on this device.</div>
             </div>
 
             <div className="flex gap-3">
-              <button onClick={() => setShowPasswordPrompt(false)} className={`flex-1 py-3 rounded-md font-black transition ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Cancel</button>
-              <button onClick={() => submitPassword()} className="flex-[2] bg-pink-500 text-white py-3 rounded-md font-black shadow hover:bg-pink-600">Unlock & Start</button>
+              <button onClick={() => setShowPasswordPrompt(false)} className={`flex-1 py-3 rounded-lg font-black transition border ${isDark ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-gray-200 text-gray-700 hover:bg-gray-100'}`}>Cancel</button>
+              <button onClick={() => submitPassword()} className="flex-[2] bg-gradient-to-tr from-pink-500 to-pink-600 text-white py-3 rounded-lg font-black shadow-lg hover:scale-105 transform transition">Unlock & Start</button>
             </div>
           </div>
         </div>
