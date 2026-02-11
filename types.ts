@@ -1,24 +1,71 @@
-
-export type Gender = 'male' | 'female' | 'non-binary' | 'other';
 export type Theme = 'light' | 'dark';
+
+export type Gender = 'male' | 'female' | 'other';
+
+export type TextingTone = 'sweet' | 'teasing' | 'chaotic' | 'formal' | 'shy' | 'confident';
+
+export type EmojiUsage = 'few' | 'normal' | 'heavy';
+
+export type ClinginessLevel = 'low' | 'medium' | 'high';
 
 export interface UserProfile {
   username: string;
   gender: Gender;
-  age: number;
-  aboutMe: string;
   profilePic?: string;
-  createdAt: number;
   theme?: Theme;
 }
 
-export interface AuthData {
-  passwordHash: string;
+export interface Message {
+  id: string;
+  partnerId: string;
+  sender: 'user' | 'partner';
+  text: string;
+  timestamp: number;
+  type: 'text';
 }
 
-export type TextingTone = 'sweet' | 'teasing' | 'chaotic' | 'formal' | 'shy' | 'confident';
-export type EmojiUsage = 'few' | 'normal' | 'heavy';
-export type ClinginessLevel = 'low' | 'medium' | 'high';
+export interface ActivePartner {
+  id: string;
+  name: string;
+  gender: Gender;
+  description: string;
+  tags: string[];
+  defaultTone: TextingTone;
+  defaultEmojiUsage: EmojiUsage;
+  defaultClinginess: ClinginessLevel;
+  interests: string[];
+  imageUrl: string;
+
+  nickname?: string;
+  memories: string[];
+
+  lastMessageTimestamp?: number;
+
+  customTone?: TextingTone;
+  customEmojiUsage?: EmojiUsage;
+  customClinginess?: ClinginessLevel;
+  customInterests?: string[];
+}
+
+export interface CommunityMessage {
+  id: string;
+  senderName: string;
+  senderAvatar?: string;
+  text: string;
+  timestamp: number;
+}
+
+export interface LocalStorageAuth {
+  username: string;
+  createdAt: number;
+}
+
+export interface LocalStorageData {
+  userProfile?: UserProfile;
+  auth?: LocalStorageAuth;
+  activePartners: Record<string, ActivePartner>;
+  communityMessages: CommunityMessage[];
+}
 
 export interface BaseCharacterTemplate {
   id: string;
@@ -31,54 +78,6 @@ export interface BaseCharacterTemplate {
   defaultClinginess: ClinginessLevel;
   interests: string[];
   imageUrl: string;
-  isRealUser?: boolean;
+  // optional extras like cardNote, isRealUser can exist in constants via index signature
+  [key: string]: any;
 }
-
-export interface ActivePartner extends BaseCharacterTemplate {
-  nickname: string;
-  customTone?: TextingTone;
-  customEmojiUsage?: EmojiUsage;
-  customClinginess?: ClinginessLevel;
-  customInterests?: string[];
-  memories: Memory[];
-  lastMessageTimestamp?: number;
-}
-
-export interface Message {
-  id: string;
-  partnerId: string;
-  sender: 'user' | 'partner';
-  text: string;
-  timestamp: number;
-  type: 'text' | 'image';
-  imageUrl?: string;
-}
-
-
-
-export interface Memory {
-  fact: string;
-  importance: number;
-}
-
-export interface LocalStorageData {
-  userProfile: UserProfile | null;
-  auth: AuthData | null;
-  activePartners: Record<string, ActivePartner>;
-  chatHistory: Message[];
-  communityChat?: CommunityMessage[];
-
-}
-export interface CommunityMessage {
-  id: string;
-  senderType: 'user' | 'partner';
-  senderId: string; // 'user' or partner.id
-  text: string;
-  timestamp: number;
-}
-interface ChatMessage {
-  // ... existing
-  imageUrl?: string;
-}
-
-
