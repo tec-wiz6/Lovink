@@ -71,37 +71,9 @@ const Chat: React.FC<Props> = ({ data, onUpdate }) => {
     }
   }, [partnerId]);
 
-  const shouldSendPic = (text: string) => {
-    const t = text.toLowerCase();
-    return (
-      t.includes('send pic') ||
-      t.includes('send a pic') ||
-      t.includes('send me a pic') ||
-      t.includes('photo') ||
-      t.includes('picture')
-    );
-  };
-
-  const buildSceneDescription = (raw: string): string => {
-    const t = raw.toLowerCase();
-    if (t.includes('gym') || t.includes('workout')) {
-      return 'gym selfie in sportswear';
-    }
-    if (t.includes('bed') || t.includes('night')) {
-      return 'late-night selfie in bed, soft lighting';
-    }
-    if (t.includes('school') || t.includes('study')) {
-      return 'study selfie at desk with books';
-    }
-    if (t.includes('outside') || t.includes('street') || t.includes('walk')) {
-      return 'street selfie outside, casual outfit';
-    }
-    return 'cute selfie';
-  };
-
   const handleSend = async (textOverride?: string) => {
     const textToSend = textOverride || input;
-    if (!textToSend?.trim() || isTyping || !partner) return;
+    if (!textToSend.trim() || isTyping || !partner) return;
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -117,29 +89,7 @@ const Chat: React.FC<Props> = ({ data, onUpdate }) => {
     onUpdate();
 
     setIsTyping(true);
-
-    // Aisha-only scene pic
-    if (partner.id === 'f2' && shouldSendPic(textToSend)) {
-      const description = buildSceneDescription(textToSend);
-
-      const aiPicMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        partnerId: partner.id,
-        sender: 'partner',
-        text: `Here's a pic of me: ${description}. 💕`,
-        timestamp: Date.now(),
-        type: 'image',
-        // TEMP: generic scene image placeholder (later we plug AI here)
-        imageUrl: 'https://placekitten.com/400/400'
-      };
-
-      storageService.addMessage(aiPicMsg);
-      setIsTyping(false);
-      onUpdate();
-      return;
-    }
     
-    // Normal text response
     const response = await aiService.chat({
       userProfile: data.userProfile!,
       partnerProfile: partner,
@@ -195,14 +145,7 @@ const Chat: React.FC<Props> = ({ data, onUpdate }) => {
                 ? 'bg-pink-600 text-white rounded-tr-none' 
                 : (isDark ? 'bg-slate-800 text-slate-100 rounded-tl-none border border-slate-700' : 'bg-white text-slate-800 rounded-tl-none border border-pink-50')}`}
             >
-              {m.type === 'image' && m.imageUrl ? (
-                <div className="flex flex-col gap-2">
-                  <img src={m.imageUrl} alt="AI pic" className="w-full max-w-xs rounded-xl object-cover shadow-md" />
-                  <p>{m.text}</p>
-                </div>
-              ) : (
-                m.text
-              )}
+              {m.text}
               <div className={`text-[8px] mt-2 flex justify-end opacity-40 font-bold`}>
                 {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </div>
