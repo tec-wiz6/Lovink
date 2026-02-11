@@ -185,5 +185,19 @@ const Chat: React.FC<Props> = ({ data, onUpdate }) => {
     </div>
   );
 };
+// In ChatWindow return, before message input:
+<input 
+  type="file" 
+  accept="image/*" 
+  onChange={async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const { url } = await put(file.name, file, { access: 'public' });
+      onSendMessage(`[IMG] ${url}`); // Sends image URL to AI
+    }
+  }}
+  className="p-2 border rounded mb-2 w-full"
+/>
+
 
 export default Chat;
