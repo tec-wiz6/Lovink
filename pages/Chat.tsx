@@ -198,6 +198,9 @@ const Chat: React.FC<Props> = ({ data, onUpdate }) => {
   }}
   className="p-2 border rounded mb-2 w-full"
 />
+{message.imageUrl && (
+  <img src={message.imageUrl} alt="AI pic" className="max-w-xs rounded-lg mt-2" />
+)}
 
 
 export default Chat;
