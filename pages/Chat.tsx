@@ -82,6 +82,23 @@ const Chat: React.FC<Props> = ({ data, onUpdate }) => {
     );
   };
 
+  const buildSceneDescription = (raw: string): string => {
+    const t = raw.toLowerCase();
+    if (t.includes('gym') || t.includes('workout')) {
+      return 'gym selfie in sportswear';
+    }
+    if (t.includes('bed') || t.includes('night')) {
+      return 'late-night selfie in bed, soft lighting';
+    }
+    if (t.includes('school') || t.includes('study')) {
+      return 'study selfie at desk with books';
+    }
+    if (t.includes('outside') || t.includes('street') || t.includes('walk')) {
+      return 'street selfie outside, casual outfit';
+    }
+    return 'cute selfie';
+  };
+
   const handleSend = async (textOverride?: string) => {
     const textToSend = textOverride || input;
     if (!textToSend?.trim() || isTyping || !partner) return;
@@ -101,17 +118,21 @@ const Chat: React.FC<Props> = ({ data, onUpdate }) => {
 
     setIsTyping(true);
 
-    // If user asked for a pic, send placeholder selfie
-    if (shouldSendPic(textToSend)) {
+    // Aisha-only scene pic
+    if (partner.id === 'f2' && shouldSendPic(textToSend)) {
+      const description = buildSceneDescription(textToSend);
+
       const aiPicMsg: Message = {
         id: (Date.now() + 1).toString(),
         partnerId: partner.id,
         sender: 'partner',
-        text: "Here's a cute pic of me just for you. 💕",
+        text: `Here's a pic of me: ${description}. 💕`,
         timestamp: Date.now(),
         type: 'image',
+        // TEMP: generic scene image placeholder (later we plug AI here)
         imageUrl: 'https://placekitten.com/400/400'
       };
+
       storageService.addMessage(aiPicMsg);
       setIsTyping(false);
       onUpdate();
