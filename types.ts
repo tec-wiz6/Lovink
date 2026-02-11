@@ -50,8 +50,10 @@ export interface Message {
   sender: 'user' | 'partner';
   text: string;
   timestamp: number;
-  type: 'text' | 'audio' | 'system';
+  type: 'text' | 'image';
+  imageUrl?: string;
 }
+
 
 export interface Memory {
   fact: string;
