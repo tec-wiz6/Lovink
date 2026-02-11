@@ -1,11 +1,11 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LocalStorageData, Message, ActivePartner } from '../types';
 import { storageService } from '../services/storage';
 import { aiService } from '../services/ai';
 import { MOCK_LIVE_USERS } from '../constants';
-import { ArrowLeft, Send, MoreVertical, ShieldCheck, Flame } from 'lucide-react';
+import { ArrowLeft, Send, MoreVertical, ShieldCheck, Flame, Image as ImageIcon } from 'lucide-react';
+import { put } from '@vercel/blob';  // Add this import
 
 interface Props {
   data: LocalStorageData;
@@ -33,7 +33,7 @@ const Chat: React.FC<Props> = ({ data, onUpdate }) => {
     }
   }
 
-  const messages = partnerId ? storageService.getMessagesForPartner(partnerId) : [];
+  const messages: Message[] = partnerId ? storageService.getMessagesForPartner(partnerId) : [];  // Typed as Message[]
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -62,7 +62,7 @@ const Chat: React.FC<Props> = ({ data, onUpdate }) => {
           sender: 'partner',
           text: res.reply,
           timestamp: Date.now(),
-          type: 'text'
+          type: 'text' as const
         };
         storageService.addMessage(msg);
         setIsTyping(false);
@@ -72,9 +72,52 @@ const Chat: React.FC<Props> = ({ data, onUpdate }) => {
     }
   }, [partnerId]);
 
+  // NEW: AI Auto-Pic Logic (FREE HuggingFace)
+  const checkForPicRequest = async (text: string): Promise<boolean> => {
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes('pic') || lowerText.includes('photo') || lowerText.includes('picture') || lowerText.includes('send image')) {
+      try {
+        // Free AI image gen (HuggingFace - no key needed)
+        const hfResponse = await fetch(
+          'https://api-inference.huggingface.co/models/dalle-mini/dalle-mini-1.1',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ inputs: 'cute anime girl smiling, your AI companion' })
+          }
+        );
+        const imageBlob = await hfResponse.blob();
+        
+        // Upload to Vercel Blob (free)
+        const fileName = `ai-pic-${Date.now()}.png`;
+        const arrayBuffer = await imageBlob.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+        const { url } = await put(fileName, uint8Array, { access: 'public' });
+        
+        // Add AI pic message
+        const aiPicMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          partnerId: partner!.id,
+          sender: 'partner',
+          text: "Here's a pic of me just for you! 😘",
+          imageUrl: url,  // NEW field
+          timestamp: Date.now(),
+          type: 'image' as const
+        };
+        storageService.addMessage(aiPicMsg);
+        onUpdate();
+        setIsTyping(false);
+        return true;
+      } catch (error) {
+        console.error('Pic gen failed:', error);
+      }
+    }
+    return false;
+  };
+
   const handleSend = async (textOverride?: string) => {
     const textToSend = textOverride || input;
-    if (!textToSend.trim() || isTyping || !partner) return;
+    if (!textToSend?.trim() || isTyping || !partner) return;
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -82,7 +125,7 @@ const Chat: React.FC<Props> = ({ data, onUpdate }) => {
       sender: 'user',
       text: textToSend,
       timestamp: Date.now(),
-      type: 'text'
+      type: 'text' as const
     };
 
     storageService.addMessage(userMsg);
@@ -91,6 +134,11 @@ const Chat: React.FC<Props> = ({ data, onUpdate }) => {
 
     setIsTyping(true);
     
+    // NEW: Check for pic first
+    const picSent = await checkForPicRequest(textToSend);
+    if (picSent) return;
+    
+    // Normal text response
     const response = await aiService.chat({
       userProfile: data.userProfile!,
       partnerProfile: partner,
@@ -104,7 +152,7 @@ const Chat: React.FC<Props> = ({ data, onUpdate }) => {
       sender: 'partner',
       text: response.reply,
       timestamp: Date.now(),
-      type: 'text'
+      type: 'text' as const
     };
 
     storageService.addMessage(aiMsg);
@@ -112,17 +160,30 @@ const Chat: React.FC<Props> = ({ data, onUpdate }) => {
     onUpdate();
   };
 
+  // NEW: Image Upload Handler
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !partner) return;
+
+    try {
+      const { url } = await put(file.name, file, { access: 'public' });
+      handleSend(`[IMG UPLOADED] ${url}`);  // AI can "see" it
+    } catch (error) {
+      console.error('Upload failed:', error);
+    }
+  };
+
   if (!partner) return null;
 
   return (
     <div className={`flex-1 flex flex-col h-full overflow-hidden transition-colors ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`}>
-      {/* Header */}
+      {/* Header - unchanged */}
       <div className={`p-4 border-b flex items-center gap-3 shadow-md z-10 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-pink-50'}`}>
         <button onClick={() => navigate(-1)} className={`p-2 rounded-full ${isDark ? 'text-white hover:bg-slate-800' : 'text-black hover:bg-gray-100'}`}>
           <ArrowLeft size={24} />
         </button>
         <div className="relative">
-          <img src={partner.imageUrl} className="w-10 h-10 rounded-full object-cover border-2 border-pink-400" />
+          <img src={partner.imageUrl || '/default-avatar.png'} className="w-10 h-10 rounded-full object-cover border-2 border-pink-400" />
           <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
         </div>
         <div className="flex-1 overflow-hidden">
@@ -146,7 +207,14 @@ const Chat: React.FC<Props> = ({ data, onUpdate }) => {
                 ? 'bg-pink-600 text-white rounded-tr-none' 
                 : (isDark ? 'bg-slate-800 text-slate-100 rounded-tl-none border border-slate-700' : 'bg-white text-slate-800 rounded-tl-none border border-pink-50')}`}
             >
-              {m.text}
+              {m.type === 'image' && m.imageUrl ? (
+                <div className="flex flex-col gap-2">
+                  <img src={m.imageUrl} alt="AI pic" className="w-full max-w-xs rounded-xl object-cover shadow-md" />
+                  <p>{m.text}</p>
+                </div>
+              ) : (
+                m.text
+              )}
               <div className={`text-[8px] mt-2 flex justify-end opacity-40 font-bold`}>
                 {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </div>
@@ -164,8 +232,17 @@ const Chat: React.FC<Props> = ({ data, onUpdate }) => {
         )}
       </div>
 
-      {/* Input */}
+      {/* NEW: Image Upload + Input */}
       <div className={`p-4 border-t z-20 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-100'}`}>
+        {/* Image Upload */}
+        <input 
+          type="file" 
+          accept="image/*" 
+          onChange={handleImageUpload}
+          className={`w-full p-3 border-2 border-dashed rounded-xl mb-3 text-sm transition-colors ${isDark ? 'bg-slate-800 border-slate-700 hover:border-pink-500 text-white' : 'bg-gray-50 border-gray-300 hover:border-pink-400 text-gray-700'}`}
+          placeholder="Upload image..."
+        />
+        
         <div className={`flex items-center gap-2 rounded-[28px] px-5 py-3 transition-all border
           ${isDark ? 'bg-slate-800 border-slate-700 focus-within:border-pink-500/50' : 'bg-gray-100 border-transparent focus-within:bg-white focus-within:border-pink-300'}`}>
           <input 
@@ -185,22 +262,5 @@ const Chat: React.FC<Props> = ({ data, onUpdate }) => {
     </div>
   );
 };
-// In ChatWindow return, before message input:
-<input 
-  type="file" 
-  accept="image/*" 
-  onChange={async (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const { url } = await put(file.name, file, { access: 'public' });
-      onSendMessage(`[IMG] ${url}`); // Sends image URL to AI
-    }
-  }}
-  className="p-2 border rounded mb-2 w-full"
-/>
-{message.imageUrl && (
-  <img src={message.imageUrl} alt="AI pic" className="max-w-xs rounded-lg mt-2" />
-)}
-
 
 export default Chat;
