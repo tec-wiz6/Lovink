@@ -1,34 +1,4 @@
-// Add to top of App.tsx imports
-import { generateImage } from 'ai';
-import { put } from '@vercel/blob';
 
-// Inside handleSendMessage, before Groq call:
-const text = (rawText || "").trim();
-if (text.includes("send pic") || text.includes("photo") || text.includes("picture")) {
-  // AI sends herself automatically!
-  const image = await generateImage({
-    model: 'black-forest-labs/flux-schnell', // Free tier works
-    prompt: "beautiful anime girl smiling, your AI companion style",
-    size: "512x512"
-  });
-  
-  // Upload to Vercel Blob (free)
-  const blob = await put(`ai-pic-${Date.now()}.png`, await fetch(image.src).then(r => r.blob()), {
-    access: 'public'
-  });
-  
-  // Add as AI message
-  const newMsg = {
-    id: makeId(),
-    role: 'assistant',
-    content: "Here's a pic of me! 😊",
-    imageUrl: blob.url,
-    timestamp: Date.now()
-  };
-  activeGroup.messages.push(newMsg);
-  setGroups([...groups]);
-  return; // Skip text response
-}
 
 
 
