@@ -73,4 +73,9 @@ export interface CommunityMessage {
   text: string;
   timestamp: number;
 }
+interface ChatMessage {
+  // ... existing
+  imageUrl?: string;
+}
+
 
